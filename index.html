@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>Paris ↔ Milano — Live Tracker</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -11,194 +11,406 @@
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#090b0f;--surface:#10131a;--surface2:#161b24;--border:#1d2336;
-  --red:#e63946;--green:#27c087;--yellow:#f4a261;--blue:#4e8ef7;
-  --text:#cdd5e8;--muted:#4a5272;
-  --mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;
+  --bg:#090b0f; --surface:#10131a; --surface2:#161b24; --border:#1d2336;
+  --red:#e63946; --green:#27c087; --yellow:#f4a261; --blue:#4e8ef7;
+  --text:#cdd5e8; --muted:#4a5272;
+  --mono:'Share Tech Mono',monospace; --sans:'Barlow',sans-serif;
+  --header-h: 54px;
+  --trainbar-h: 52px;
+  --dtbar-h: 46px;
 }
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+*{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ height:100%; overflow:hidden; }
+body{ font-family:var(--sans); background:var(--bg); color:var(--text); display:flex; flex-direction:column; font-size:15px; }
 
-/* HEADER */
-#header{background:var(--surface);border-bottom:1px solid var(--border);height:50px;padding:0 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:1000}
-.logo{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;border:1px solid var(--border);padding:4px 9px;border-radius:3px;white-space:nowrap}
-.logo .hl{color:var(--red)}
+/* ══════════════════════════════════
+   HEADER
+══════════════════════════════════ */
+#header{
+  background:var(--surface); border-bottom:1px solid var(--border);
+  height:var(--header-h); padding:0 16px;
+  display:flex; align-items:center; gap:12px; flex-shrink:0; z-index:1000;
+}
+.logo{
+  font-family:var(--mono); font-size:13px; color:var(--muted);
+  letter-spacing:2px; text-transform:uppercase;
+  border:1px solid var(--border); padding:6px 12px; border-radius:4px; white-space:nowrap;
+}
+.logo .hl{ color:var(--red); }
+/* Live badge in header (desktop shows in train-bar, mobile shows here) */
+#hdr-badge{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+.dot{ width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+.dot.live{ background:var(--green); box-shadow:0 0 7px var(--green); animation:blink 2s infinite; }
+.dot.est{  background:var(--yellow); box-shadow:0 0 7px var(--yellow); animation:blink 2s infinite; }
+#live-lbl{ font-family:var(--mono); font-size:11px; color:var(--muted); white-space:nowrap; }
+/* Refresh button in header (mobile only) */
+#hdr-refresh{
+  display:none;
+  background:none; border:1px solid var(--border); color:var(--muted);
+  font-family:var(--mono); font-size:12px; padding:7px 12px;
+  cursor:pointer; border-radius:4px; transition:all .2s;
+  min-width:44px; min-height:44px; align-items:center; justify-content:center;
+}
+#hdr-refresh:active{ border-color:var(--red); color:var(--red); }
 
-/* TRAIN BAR */
-#train-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:0 14px;display:flex;align-items:center;gap:7px;height:46px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
-#train-bar::-webkit-scrollbar{display:none}
-.tbtn{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:10px;padding:5px 11px;cursor:pointer;border-radius:4px;white-space:nowrap;transition:all .2s;flex-shrink:0}
-.tbtn:hover{border-color:var(--blue);color:var(--text)}
-.tbtn.active{background:var(--red);border-color:var(--red);color:#fff}
-.tbtn .td{font-size:8px;opacity:.7;display:block}
-.tbtn .tn{font-size:12px;display:block}
-.tbtn .tt{font-size:9px;display:block}
-.vsep{width:1px;height:22px;background:var(--border);flex-shrink:0}
-.cinp{background:transparent;border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 9px;border-radius:3px;width:85px;outline:none}
-.cinp:focus{border-color:var(--blue)}
-.cgo{background:var(--blue);border:none;color:#fff;font-family:var(--mono);font-size:10px;padding:6px 9px;cursor:pointer;border-radius:3px}
-.cgo:hover{opacity:.85}
-#bar-right{margin-left:auto;display:flex;align-items:center;gap:9px;flex-shrink:0}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0}
-.dot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite}
-.dot.est{background:var(--yellow);box-shadow:0 0 6px var(--yellow);animation:blink 2s infinite}
-#live-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap}
+/* ══════════════════════════════════
+   TRAIN BAR
+══════════════════════════════════ */
+#train-bar{
+  background:var(--surface2); border-bottom:1px solid var(--border);
+  padding:0 14px; display:flex; align-items:center; gap:8px;
+  height:var(--trainbar-h); overflow-x:auto; scrollbar-width:none; flex-shrink:0;
+}
+#train-bar::-webkit-scrollbar{ display:none; }
+.tbtn{
+  display:flex; align-items:center; gap:6px;
+  background:transparent; border:1px solid var(--border); color:var(--muted);
+  font-family:var(--mono); font-size:11px; padding:8px 13px;
+  cursor:pointer; border-radius:5px; white-space:nowrap;
+  transition:all .2s; flex-shrink:0; min-height:44px;
+}
+.tbtn:active, .tbtn:hover{ border-color:var(--blue); color:var(--text); }
+.tbtn.active{ background:var(--red); border-color:var(--red); color:#fff; }
+.tbtn .td{ font-size:9px; opacity:.75; display:block; }
+.tbtn .tn{ font-size:14px; display:block; font-weight:600; }
+.tbtn .tt{ font-size:10px; display:block; }
+.vsep{ width:1px; height:26px; background:var(--border); flex-shrink:0; }
+.cinp{
+  background:transparent; border:1px solid var(--border); color:var(--text);
+  font-family:var(--mono); font-size:13px; padding:8px 11px;
+  border-radius:4px; width:96px; outline:none; min-height:44px;
+}
+.cinp:focus{ border-color:var(--blue); }
+.cgo{
+  background:var(--blue); border:none; color:#fff;
+  font-family:var(--mono); font-size:12px; padding:8px 12px;
+  cursor:pointer; border-radius:4px; min-height:44px; min-width:44px;
+}
+#bar-right{ margin-left:auto; display:flex; align-items:center; gap:10px; flex-shrink:0; }
 
-/* DATE BAR */
-#dt-bar{background:var(--bg);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:12px;height:42px;flex-shrink:0}
-.dt-lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);white-space:nowrap}
+/* ══════════════════════════════════
+   DATE BAR
+══════════════════════════════════ */
+#dt-bar{
+  background:var(--bg); border-bottom:1px solid var(--border);
+  padding:0 14px; display:flex; align-items:center; gap:10px;
+  height:var(--dtbar-h); flex-shrink:0;
+}
+.dt-lbl{
+  font-family:var(--mono); font-size:11px; text-transform:uppercase;
+  letter-spacing:1.5px; color:var(--muted); white-space:nowrap;
+}
+#date-picker-wrap{ position:relative; display:flex; align-items:center; }
+#date-display{
+  font-family:var(--mono); font-size:13px; color:var(--text);
+  background:var(--surface2); border:1px solid var(--border);
+  padding:8px 14px; border-radius:5px; cursor:pointer;
+  display:flex; align-items:center; gap:9px;
+  transition:border-color .2s; user-select:none; min-height:38px;
+}
+#date-display:active,#date-display:hover{ border-color:var(--blue); }
+#date-display .d-date{ color:#fff; }
+#date-display .d-arrow{ color:var(--muted); font-size:10px; transition:transform .2s; }
+#date-display.open .d-arrow{ transform:rotate(180deg); }
 
-/* Custom date picker wrapper */
-#date-picker-wrap{position:relative;display:flex;align-items:center}
-#date-display{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);padding:6px 14px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:border-color .2s;user-select:none}
-#date-display:hover{border-color:var(--blue)}
-#date-display .d-date{color:#fff;font-weight:400}
-#date-display .d-arrow{color:var(--muted);font-size:9px;transition:transform .2s}
-#date-display.open .d-arrow{transform:rotate(180deg)}
+/* CALENDAR DROPDOWN — desktop: absolute; mobile: fixed centered */
+#cal-drop{
+  position:absolute; top:calc(100% + 8px); left:0;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:16px; z-index:3000;
+  box-shadow:0 10px 40px rgba(0,0,0,.7); display:none; min-width:260px;
+}
+#cal-drop.show{ display:block; }
+.cal-hdr{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.cal-nav{
+  background:none; border:1px solid var(--border); color:var(--muted);
+  font-family:var(--mono); font-size:13px; padding:6px 12px;
+  cursor:pointer; border-radius:4px; transition:all .2s; min-height:44px; min-width:44px;
+}
+.cal-nav:active,.cal-nav:hover{ border-color:var(--blue); color:var(--blue); }
+.cal-month{ font-family:var(--mono); font-size:13px; color:var(--text); text-transform:uppercase; letter-spacing:1px; }
+.cal-dow{ display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px; }
+.cal-dow span{ font-family:var(--mono); font-size:10px; color:var(--muted); text-align:center; padding:3px 0; text-transform:uppercase; }
+.cal-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.cal-day{
+  font-family:var(--mono); font-size:13px; color:var(--muted);
+  text-align:center; padding:8px 4px; border-radius:5px;
+  cursor:pointer; border:1px solid transparent; transition:all .15s;
+  min-height:40px; display:flex; align-items:center; justify-content:center;
+}
+.cal-day:active:not(.disabled):not(.empty),.cal-day:hover:not(.disabled):not(.empty){ background:var(--surface2); border-color:var(--border); color:var(--text); }
+.cal-day.today{ color:var(--blue); border-color:rgba(78,142,247,.3); }
+.cal-day.selected{ background:var(--red); border-color:var(--red); color:#fff; }
+.cal-day.disabled{ opacity:.2; cursor:default; }
+.cal-day.empty{ cursor:default; }
 
-/* Calendar dropdown */
-#cal-drop{position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;z-index:3000;box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;min-width:240px}
-#cal-drop.show{display:block}
-.cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.cal-nav{background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:11px;padding:4px 9px;cursor:pointer;border-radius:3px;transition:all .2s}
-.cal-nav:hover{border-color:var(--blue);color:var(--blue)}
-.cal-month{font-family:var(--mono);font-size:11px;color:var(--text);text-transform:uppercase;letter-spacing:1px}
-.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
-.cal-dow span{font-family:var(--mono);font-size:8px;color:var(--muted);text-align:center;padding:2px 0;text-transform:uppercase}
-.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.cal-day{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;padding:6px 4px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all .15s}
-.cal-day:hover:not(.disabled):not(.empty){background:var(--surface2);border-color:var(--border);color:var(--text)}
-.cal-day.today{color:var(--blue);border-color:rgba(78,142,247,.3)}
-.cal-day.selected{background:var(--red);border-color:var(--red);color:#fff}
-.cal-day.selected.today{background:var(--red)}
-.cal-day.disabled{opacity:.2;cursor:default}
-.cal-day.empty{cursor:default}
+#date-shortcuts{ display:flex; gap:8px; }
+.shortcut{
+  font-family:var(--mono); font-size:11px; padding:7px 12px;
+  border:1px solid var(--border); background:transparent; color:var(--muted);
+  cursor:pointer; border-radius:4px; transition:all .2s; white-space:nowrap; min-height:38px;
+}
+.shortcut:active,.shortcut:hover{ border-color:var(--blue); color:var(--blue); }
+.shortcut.active{ border-color:var(--green); color:var(--green); }
+#btn-refresh{
+  margin-left:auto; background:none; border:1px solid var(--border); color:var(--muted);
+  font-family:var(--mono); font-size:11px; padding:7px 12px;
+  cursor:pointer; border-radius:4px; transition:all .2s; flex-shrink:0; min-height:38px;
+}
+#btn-refresh:active,#btn-refresh:hover{ border-color:var(--red); color:var(--red); }
 
-#date-shortcuts{display:flex;gap:6px;margin-left:4px}
-.shortcut{font-family:var(--mono);font-size:9px;padding:4px 9px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:3px;transition:all .2s}
-.shortcut:hover{border-color:var(--blue);color:var(--blue)}
-.shortcut.active{border-color:var(--green);color:var(--green)}
+/* ══════════════════════════════════
+   MAIN LAYOUT
+══════════════════════════════════ */
+#main{ display:flex; flex:1; overflow:hidden; min-height:0; position:relative; }
+#map{ flex:1; position:relative; min-width:0; }
 
-#btn-refresh{margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:9px;padding:4px 9px;cursor:pointer;border-radius:3px;transition:all .2s;flex-shrink:0}
-#btn-refresh:hover{border-color:var(--red);color:var(--red)}
+/* ══════════════════════════════════
+   DESKTOP SIDEBAR
+══════════════════════════════════ */
+#sidebar{
+  width:300px; background:var(--surface); border-left:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden; flex-shrink:0;
+}
+.sb-hd{
+  padding:14px 18px 11px; font-family:var(--mono); font-size:11px;
+  text-transform:uppercase; letter-spacing:2px; color:var(--muted);
+  border-bottom:1px solid var(--border); flex-shrink:0;
+}
+#stats{
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  padding:12px 18px; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.sv{ font-family:var(--mono); font-size:17px; color:#fff; }
+.sl{ font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-top:3px; }
+.pos{ color:var(--yellow)!important; }
+.neg{ color:var(--green)!important; }
+#fr-box{
+  display:none; margin:10px 16px;
+  background:rgba(78,142,247,.06); border:1px solid rgba(78,142,247,.15);
+  border-radius:6px; padding:11px 13px; flex-shrink:0;
+}
+.fr-t{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:1.5px; color:var(--blue); margin-bottom:6px; }
+.fr-b{ color:#506080; font-size:12px; line-height:1.6; }
+#slist{ flex:1; overflow-y:auto; padding:6px 0; }
+#slist::-webkit-scrollbar{ width:3px; }
+#slist::-webkit-scrollbar-thumb{ background:var(--border); border-radius:2px; }
 
-/* MAIN */
-#main{display:flex;flex:1;overflow:hidden;min-height:0}
-#map{flex:1;position:relative;min-width:0}
+/* Stop rows — shared by sidebar and bottom sheet */
+.srow{ display:flex; padding:0 16px; gap:11px; }
+.spine{ display:flex; flex-direction:column; align-items:center; width:14px; flex-shrink:0; }
+.dc{ width:11px; height:11px; border-radius:50%; border:2px solid var(--muted); background:var(--bg); flex-shrink:0; z-index:1; }
+.dc.done{ background:var(--green); border-color:var(--green); }
+.dc.now{ background:var(--red); border-color:var(--red); box-shadow:0 0 9px var(--red); width:13px; height:13px; margin:-1px; animation:blink .9s infinite; }
+.dc.end{ border-color:var(--muted); width:13px; height:13px; margin:-1px; }
+.lc{ width:2px; flex:1; background:var(--border); margin:2px 0; }
+.lc.done{ background:var(--green); }
+.si{ flex:1; padding:5px 0 14px; }
+.sn{ font-size:13px; font-weight:600; color:var(--text); line-height:1.4; }
+.sn.done{ color:var(--muted); font-weight:400; }
+.sn.now{ color:#fff; font-weight:700; }
+.sm{ display:flex; align-items:center; gap:6px; margin-top:3px; flex-wrap:wrap; }
+.stm{ font-family:var(--mono); font-size:11px; color:var(--muted); }
+.tag{ font-size:9px; padding:2px 6px; border-radius:3px; letter-spacing:.5px; text-transform:uppercase; font-weight:600; }
+.tag.fr{ background:#182040; color:#6a8cff; }
+.tag.it{ background:#162815; color:#4ec978; }
+.tag.bo{ background:#2a1e0e; color:#f4a261; }
+.sdel{ font-family:var(--mono); font-size:11px; }
+.snote{ font-size:11px; color:#253050; margin-top:2px; font-style:italic; }
 
-/* SIDEBAR */
-#sidebar{width:274px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
-.sb-hd{padding:11px 14px 9px;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);border-bottom:1px solid var(--border);flex-shrink:0}
-#stats{display:grid;grid-template-columns:1fr 1fr 1fr;padding:9px 14px;gap:5px;border-bottom:1px solid var(--border);flex-shrink:0}
-.sv{font-family:var(--mono);font-size:14px;color:#fff}
-.sl{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:2px}
-.pos{color:var(--yellow)!important}
-.neg{color:var(--green)!important}
+/* ══════════════════════════════════
+   MAP OVERLAYS
+══════════════════════════════════ */
+.mp{
+  position:absolute; z-index:900;
+  background:rgba(9,11,15,.92); border:1px solid var(--border);
+  border-radius:8px; backdrop-filter:blur(12px);
+}
+#pp{ bottom:24px; left:14px; min-width:210px; padding:14px 18px; display:none; }
+.pp-l{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:2px; color:var(--muted); margin-bottom:8px; }
+.pp-m{ font-size:16px; font-weight:700; color:#fff; line-height:1.3; }
+.pp-s{ font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:4px; }
+.pp-c{ font-family:var(--mono); font-size:10px; color:#1a2440; margin-top:5px; }
+#sp{ bottom:24px; right:14px; padding:7px 13px; font-family:var(--mono); font-size:10px; color:var(--muted); display:none; }
+#cbtn{
+  position:absolute; top:14px; right:14px; z-index:900;
+  background:rgba(9,11,15,.92); border:1px solid var(--border); color:var(--text);
+  font-family:var(--mono); font-size:12px; padding:9px 14px;
+  cursor:pointer; border-radius:6px; backdrop-filter:blur(8px);
+  transition:all .2s; display:none; min-height:44px;
+}
+#cbtn:active,#cbtn:hover{ border-color:var(--red); color:var(--red); }
 
-#fr-box{display:none;margin:8px 14px;background:rgba(78,142,247,.06);border:1px solid rgba(78,142,247,.15);border-radius:5px;padding:9px 11px;flex-shrink:0}
-.fr-t{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:1.5px;color:var(--blue);margin-bottom:5px}
-.fr-b{color:#506080;font-size:10px;line-height:1.5}
+/* ══════════════════════════════════
+   MOBILE BOTTOM SHEET
+══════════════════════════════════ */
+#bottom-sheet{
+  display:none; /* shown via JS on mobile */
+  position:fixed; left:0; right:0; bottom:0; z-index:2000;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  border-radius:16px 16px 0 0;
+  box-shadow:0 -8px 40px rgba(0,0,0,.6);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+  transform:translateY(calc(100% - 72px)); /* peek state */
+  max-height:80vh;
+  flex-direction:column;
+}
+#bottom-sheet.open{ transform:translateY(0); }
 
-#slist{flex:1;overflow-y:auto;padding:4px 0}
-#slist::-webkit-scrollbar{width:3px}
-#slist::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.srow{display:flex;padding:0 12px;gap:9px}
-.spine{display:flex;flex-direction:column;align-items:center;width:11px;flex-shrink:0}
-.dc{width:9px;height:9px;border-radius:50%;border:2px solid var(--muted);background:var(--bg);flex-shrink:0;z-index:1}
-.dc.done{background:var(--green);border-color:var(--green)}
-.dc.now{background:var(--red);border-color:var(--red);box-shadow:0 0 8px var(--red);width:11px;height:11px;margin:-1px;animation:blink .9s infinite}
-.dc.end{border-color:var(--muted);width:11px;height:11px;margin:-1px}
-.lc{width:2px;flex:1;background:var(--border);margin:2px 0}
-.lc.done{background:var(--green)}
-.si{flex:1;padding:4px 0 11px}
-.sn{font-size:11px;font-weight:600;color:var(--text);line-height:1.3}
-.sn.done{color:var(--muted);font-weight:400}
-.sn.now{color:#fff;font-weight:700}
-.sm{display:flex;align-items:center;gap:5px;margin-top:2px;flex-wrap:wrap}
-.stm{font-family:var(--mono);font-size:9px;color:var(--muted)}
-.tag{font-size:7px;padding:1px 4px;border-radius:2px;letter-spacing:.5px;text-transform:uppercase}
-.tag.fr{background:#182040;color:#6a8cff}
-.tag.it{background:#162815;color:#4ec978}
-.tag.bo{background:#2a1e0e;color:#f4a261}
-.sdel{font-family:var(--mono);font-size:9px}
-.snote{font-size:9px;color:#253050;margin-top:1px;font-style:italic}
+/* Handle area — tap to toggle */
+#bs-handle{
+  padding:12px 0 10px; display:flex; flex-direction:column;
+  align-items:center; gap:8px; cursor:pointer; flex-shrink:0;
+  touch-action:none; /* prevent scroll during drag on handle */
+}
+.bs-pill{
+  width:40px; height:4px; background:var(--border);
+  border-radius:2px; flex-shrink:0;
+}
+#bs-peek{
+  display:flex; align-items:center; gap:14px;
+  padding:0 18px; width:100%;
+}
+.bs-stat{ display:flex; flex-direction:column; gap:1px; }
+.bs-sv{ font-family:var(--mono); font-size:16px; color:#fff; }
+.bs-sl{ font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
 
-/* MAP OVERLAYS */
-.mp{position:absolute;z-index:900;background:rgba(9,11,15,.9);border:1px solid var(--border);border-radius:7px;backdrop-filter:blur(12px)}
-#pp{bottom:22px;left:12px;min-width:190px;padding:11px 14px;display:none}
-.pp-l{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:6px}
-.pp-m{font-size:14px;font-weight:700;color:#fff;line-height:1.3}
-.pp-s{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px}
-.pp-c{font-family:var(--mono);font-size:8px;color:#1a2440;margin-top:4px}
-#sp{bottom:22px;right:12px;padding:5px 10px;font-family:var(--mono);font-size:8px;color:var(--muted);display:none}
-#cbtn{position:absolute;top:12px;right:12px;z-index:900;background:rgba(9,11,15,.9);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:9px;padding:6px 11px;cursor:pointer;border-radius:5px;backdrop-filter:blur(8px);transition:all .2s;display:none}
-#cbtn:hover{border-color:var(--red);color:var(--red)}
+#bs-body{
+  flex:1; overflow-y:auto; overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:env(safe-area-inset-bottom, 16px);
+}
+#bs-body::-webkit-scrollbar{ display:none; }
 
-/* STATUS OVERLAY */
-#sov{position:absolute;inset:0;z-index:800;display:none;align-items:center;justify-content:center;pointer-events:none}
-.sob{text-align:center;background:rgba(9,11,15,.8);border:1px solid var(--border);border-radius:10px;padding:24px 32px;backdrop-filter:blur(16px)}
-.sob-i{font-size:38px;margin-bottom:10px}
-.sob-t{font-size:17px;font-weight:700;color:#fff;margin-bottom:5px}
-.sob-s{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px}
+/* ══════════════════════════════════
+   STATUS OVERLAY
+══════════════════════════════════ */
+#sov{
+  position:absolute; inset:0; z-index:800;
+  display:none; align-items:center; justify-content:center; pointer-events:none;
+}
+.sob{
+  text-align:center; background:rgba(9,11,15,.82);
+  border:1px solid var(--border); border-radius:12px;
+  padding:28px 36px; backdrop-filter:blur(16px);
+}
+.sob-i{ font-size:44px; margin-bottom:12px; }
+.sob-t{ font-size:20px; font-weight:700; color:#fff; margin-bottom:6px; }
+.sob-s{ font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:1px; }
 
-/* NO TRAIN */
-#ntm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none}
-.nt{text-align:center;opacity:.4}
-.nt .ni{font-size:42px;margin-bottom:8px}
-.nt p{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted)}
+/* ══════════════════════════════════
+   NO TRAIN / LOADING
+══════════════════════════════════ */
+#ntm{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; }
+.nt{ text-align:center; opacity:.4; }
+.nt .ni{ font-size:48px; margin-bottom:10px; }
+.nt p{ font-family:var(--mono); font-size:12px; letter-spacing:1px; color:var(--muted); }
+#lod{ position:fixed; inset:0; background:rgba(9,11,15,.92); z-index:5000; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; backdrop-filter:blur(4px); }
+#lod.hidden{ display:none; }
+.spn{ width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--red); border-radius:50%; animation:spin .7s linear infinite; }
+.spt{ font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:2px; }
+.bl-icon{ background:rgba(244,162,97,.1); border:1px solid rgba(244,162,97,.3); color:#f4a261; font-size:10px; padding:3px 7px; font-family:var(--mono); white-space:nowrap; border-radius:3px; }
 
-/* LOADING */
-#lod{position:fixed;inset:0;background:rgba(9,11,15,.9);z-index:2000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;backdrop-filter:blur(4px)}
-#lod.hidden{display:none}
-.spn{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite}
-.spt{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px}
+@keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.2} }
+@keyframes spin{ to{transform:rotate(360deg)} }
 
-.bl-icon{background:rgba(244,162,97,.1);border:1px solid rgba(244,162,97,.3);color:#f4a261;font-size:8px;padding:2px 5px;font-family:var(--mono);white-space:nowrap;border-radius:3px}
+/* ══════════════════════════════════
+   TABLET  ≤ 900px
+══════════════════════════════════ */
+@media(max-width:900px){
+  #sidebar{ display:none; }
+  #bottom-sheet{ display:flex; }
+  #hdr-refresh{ display:flex; }
+  #btn-refresh{ display:none; }
+  #bar-right{ display:none; } /* badge moves to header */
+  /* Map overlays: position panel only, centered bottom */
+  #pp{
+    left:50%; transform:translateX(-50%);
+    bottom:84px; /* above bottom sheet peek */
+    min-width:260px; max-width:calc(100vw - 28px);
+  }
+  #sp{ display:none !important; } /* source info is in header badge */
+  #cbtn{ top:10px; right:10px; font-size:11px; padding:8px 12px; }
+  /* Calendar goes fixed + centered on mobile */
+  #cal-drop{
+    position:fixed; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    bottom:auto; max-width:320px; width:90vw;
+  }
+  .dt-lbl{ display:none; }
+  #date-shortcuts{ gap:6px; }
+  .shortcut{ font-size:10px; padding:6px 10px; }
+}
 
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:760px){
-  #sidebar{display:none}
-  #pp{left:8px;bottom:14px}
-  #sp{right:8px;bottom:14px}
-  #date-shortcuts{display:none}
+/* ══════════════════════════════════
+   PHONE  ≤ 480px
+══════════════════════════════════ */
+@media(max-width:480px){
+  :root{
+    --header-h: 52px;
+    --trainbar-h: 48px;
+    --dtbar-h: 44px;
+  }
+  .logo{ font-size:11px; padding:5px 9px; letter-spacing:1px; }
+  #date-display{ font-size:12px; padding:7px 12px; gap:7px; }
+  #date-shortcuts{ display:none; }
+  .tbtn .tt{ display:none; } /* hide times on very small screens */
+  .cinp{ width:80px; }
+  #pp{ bottom:80px; }
 }
 </style>
 </head>
 <body>
 
-<div id="lod"><div class="spn"></div><div class="spt">Caricamento mappa...</div></div>
+<div id="lod"><div class="spn"></div><div class="spt">Caricamento...</div></div>
 
+<!-- HEADER -->
 <div id="header">
-  <div class="logo">🚄 <span class="hl">Paris</span> ↔ <span class="hl">Milano</span> Tracker</div>
-</div>
-
-<div id="train-bar">
-  <div class="tbtn" onclick="selectTrain('9281')"><span class="td">🇫🇷→🇮🇹</span><span class="tn">FR 9281</span><span class="tt">07:30→14:07</span></div>
-  <div class="tbtn active" onclick="selectTrain('9287')"><span class="td">🇫🇷→🇮🇹</span><span class="tn">FR 9287</span><span class="tt">15:16→22:07</span></div>
-  <div class="vsep"></div>
-  <div class="tbtn" onclick="selectTrain('9292')"><span class="td">🇮🇹→🇫🇷</span><span class="tn">FR 9292</span><span class="tt">06:25→13:22</span></div>
-  <div class="tbtn" onclick="selectTrain('9296')"><span class="td">🇮🇹→🇫🇷</span><span class="tn">FR 9296</span><span class="tt">15:53→22:34</span></div>
-  <div class="vsep"></div>
-  <input class="cinp" id="cin" type="text" placeholder="Num. treno" maxlength="6" onkeydown="if(event.key==='Enter')goCustom()"/>
-  <button class="cgo" onclick="goCustom()">↗</button>
-  <div id="bar-right">
+  <div class="logo">🚄 <span class="hl">Paris</span> ↔ <span class="hl">Milano</span></div>
+  <div id="hdr-badge">
     <div class="dot" id="ldot"></div>
     <span id="live-lbl">—</span>
   </div>
+  <button id="hdr-refresh" onclick="refresh()" title="Aggiorna">↻</button>
 </div>
 
+<!-- TRAIN SELECTOR -->
+<div id="train-bar">
+  <div class="tbtn" onclick="selectTrain('9281')">
+    <span class="td">🇫🇷→🇮🇹</span><span class="tn">FR 9281</span><span class="tt">07:30→14:07</span>
+  </div>
+  <div class="tbtn active" onclick="selectTrain('9287')">
+    <span class="td">🇫🇷→🇮🇹</span><span class="tn">FR 9287</span><span class="tt">15:16→22:07</span>
+  </div>
+  <div class="vsep"></div>
+  <div class="tbtn" onclick="selectTrain('9292')">
+    <span class="td">🇮🇹→🇫🇷</span><span class="tn">FR 9292</span><span class="tt">06:25→13:22</span>
+  </div>
+  <div class="tbtn" onclick="selectTrain('9296')">
+    <span class="td">🇮🇹→🇫🇷</span><span class="tn">FR 9296</span><span class="tt">15:53→22:34</span>
+  </div>
+  <div class="vsep"></div>
+  <input class="cinp" id="cin" type="text" placeholder="Num." maxlength="6"
+         onkeydown="if(event.key==='Enter')goCustom()" inputmode="numeric"/>
+  <button class="cgo" onclick="goCustom()">↗</button>
+  <div id="bar-right">
+    <div class="dot" id="ldot-desk"></div>
+    <span id="live-lbl-desk" style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap">—</span>
+  </div>
+</div>
+
+<!-- DATE BAR -->
 <div id="dt-bar">
   <span class="dt-lbl">Data:</span>
 
-  <!-- Custom calendar -->
   <div id="date-picker-wrap">
     <div id="date-display" onclick="toggleCal()">
       <span>📅</span>
       <span class="d-date" id="date-display-txt">—</span>
       <span class="d-arrow">▼</span>
     </div>
+    <!-- Calendar dropdown -->
     <div id="cal-drop">
       <div class="cal-hdr">
         <button class="cal-nav" onclick="calNav(-1)">◀</button>
@@ -213,26 +425,31 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
   </div>
 
   <div id="date-shortcuts">
-    <button class="shortcut active" id="sc-today" onclick="jumpToToday()">Oggi</button>
+    <button class="shortcut" id="sc-today" onclick="jumpToToday()">Oggi</button>
     <button class="shortcut" id="sc-tom" onclick="jumpToTomorrow()">Domani</button>
   </div>
 
   <button id="btn-refresh" onclick="refresh()">↻ Aggiorna</button>
 </div>
 
+<!-- MAP -->
 <div id="main">
   <div id="map">
     <div id="ntm"><div class="nt"><div class="ni">🚄</div><p>Seleziona un treno</p></div></div>
     <div id="sov"></div>
+    <!-- Position panel -->
     <div class="mp" id="pp">
       <div class="pp-l">Posizione stimata</div>
       <div class="pp-m" id="ppm">—</div>
       <div class="pp-s" id="pps"></div>
       <div class="pp-c" id="ppc"></div>
     </div>
+    <!-- Source tag (desktop only) -->
     <div class="mp" id="sp"><span id="spt-txt"></span></div>
-    <button id="cbtn" onclick="centerTrain()">⊕ Centra treno</button>
+    <button id="cbtn" onclick="centerTrain()">⊕ Centra</button>
   </div>
+
+  <!-- DESKTOP SIDEBAR -->
   <div id="sidebar">
     <div class="sb-hd"><span id="sb-title">Fermate</span></div>
     <div id="stats">
@@ -242,64 +459,94 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
     </div>
     <div id="fr-box">
       <div class="fr-t">🇫🇷 Sezione Francese</div>
-      <div class="fr-b">SNCF non pubblica posizioni GPS. La posizione è <strong>interpolata dall'orario</strong>. I ritardi FR vengono recuperati dal feed GTFS-RT SNCF (open data).</div>
+      <div class="fr-b">SNCF non pubblica posizioni GPS. La posizione è <strong>interpolata dall'orario</strong>. I ritardi FR vengono recuperati dal feed GTFS-RT SNCF.</div>
     </div>
     <div id="slist"></div>
   </div>
 </div>
 
+<!-- MOBILE BOTTOM SHEET -->
+<div id="bottom-sheet">
+  <div id="bs-handle" onclick="toggleSheet()">
+    <div class="bs-pill"></div>
+    <div id="bs-peek">
+      <div class="bs-stat">
+        <div class="bs-sv" id="bs-delay">—</div>
+        <div class="bs-sl">Ritardo</div>
+      </div>
+      <div class="bs-stat">
+        <div class="bs-sv" id="bs-eta">—</div>
+        <div class="bs-sl">Arrivo</div>
+      </div>
+      <div class="bs-stat">
+        <div class="bs-sv" id="bs-phase">—</div>
+        <div class="bs-sl">Stato</div>
+      </div>
+    </div>
+  </div>
+  <div id="bs-body">
+    <div id="bs-fr-box" style="display:none;margin:8px 14px;background:rgba(78,142,247,.06);border:1px solid rgba(78,142,247,.15);border-radius:6px;padding:10px 12px">
+      <div class="fr-t">🇫🇷 Sezione Francese</div>
+      <div class="fr-b">SNCF non pubblica posizioni GPS. Posizione interpolata dall'orario.</div>
+    </div>
+    <div id="bs-list"></div>
+  </div>
+</div>
+
 <script>
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // SCHEDULES
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 const SCH = {
   '9281':{label:'FR 9281',stops:[
-    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735, dep:'07:30',co:'FR',isO:true},
-    {id:'lyon', name:'Lyon Part-Dieu',        lat:45.7601,lng:4.8296, arr:'09:28',dep:'09:28',co:'FR',approx:true},
-    {id:'cham', name:'Chambéry',              lat:45.5646,lng:5.9178, arr:'10:54',dep:'10:54',co:'FR',approx:true},
-    {id:'sj',   name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485, arr:'11:40',dep:'11:40',co:'FR',approx:true},
-    {id:'mod',  name:'Modane',                lat:45.1944,lng:6.6594, arr:'12:15',dep:'12:15',co:'IT',border:true},
-    {id:'oulx', name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308, arr:'12:41',dep:'12:41',co:'IT'},
-    {id:'to',   name:'Torino Porta Susa',     lat:45.0706,lng:7.6676, arr:'13:29',dep:'13:29',co:'IT'},
-    {id:'mi',   name:'Milano Centrale',       lat:45.4862,lng:9.2046, arr:'14:07',co:'IT',isD:true}
+    {id:'paris',name:'Paris Gare de Lyon',  lat:48.8448,lng:2.3735, dep:'07:30',co:'FR',isO:true},
+    {id:'lyon', name:'Lyon Part-Dieu',       lat:45.7601,lng:4.8296, arr:'09:28',dep:'09:28',co:'FR',approx:true},
+    {id:'cham', name:'Chambéry',             lat:45.5646,lng:5.9178, arr:'10:54',dep:'10:54',co:'FR',approx:true},
+    {id:'sj',   name:'St-Jean-de-Maurienne', lat:45.2745,lng:6.3485, arr:'11:40',dep:'11:40',co:'FR',approx:true},
+    {id:'mod',  name:'Modane',               lat:45.1944,lng:6.6594, arr:'12:15',dep:'12:15',co:'IT',border:true},
+    {id:'oulx', name:'Oulx Cesana Claviere', lat:44.9133,lng:6.8308, arr:'12:41',dep:'12:41',co:'IT'},
+    {id:'to',   name:'Torino Porta Susa',    lat:45.0706,lng:7.6676, arr:'13:29',dep:'13:29',co:'IT'},
+    {id:'mi',   name:'Milano Centrale',      lat:45.4862,lng:9.2046, arr:'14:07',co:'IT',isD:true}
   ]},
   '9287':{label:'FR 9287',stops:[
-    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735, dep:'15:16',co:'FR',isO:true},
-    {id:'lyon', name:'Lyon Part-Dieu',        lat:45.7601,lng:4.8296, arr:'17:21',dep:'17:21',co:'FR',approx:true},
-    {id:'cham', name:'Chambéry',              lat:45.5646,lng:5.9178, arr:'18:47',dep:'18:47',co:'FR',approx:true},
-    {id:'sj',   name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485, arr:'19:33',dep:'19:33',co:'FR',approx:true},
-    {id:'mod',  name:'Modane',                lat:45.1944,lng:6.6594, arr:'20:08',dep:'20:08',co:'IT',border:true},
-    {id:'oulx', name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308, arr:'20:34',dep:'20:34',co:'IT'},
-    {id:'to',   name:'Torino Porta Susa',     lat:45.0706,lng:7.6676, arr:'21:22',dep:'21:22',co:'IT'},
-    {id:'mi',   name:'Milano Centrale',       lat:45.4862,lng:9.2046, arr:'22:07',co:'IT',isD:true}
+    {id:'paris',name:'Paris Gare de Lyon',  lat:48.8448,lng:2.3735, dep:'15:16',co:'FR',isO:true},
+    {id:'lyon', name:'Lyon Part-Dieu',       lat:45.7601,lng:4.8296, arr:'17:21',dep:'17:21',co:'FR',approx:true},
+    {id:'cham', name:'Chambéry',             lat:45.5646,lng:5.9178, arr:'18:47',dep:'18:47',co:'FR',approx:true},
+    {id:'sj',   name:'St-Jean-de-Maurienne', lat:45.2745,lng:6.3485, arr:'19:33',dep:'19:33',co:'FR',approx:true},
+    {id:'mod',  name:'Modane',               lat:45.1944,lng:6.6594, arr:'20:08',dep:'20:08',co:'IT',border:true},
+    {id:'oulx', name:'Oulx Cesana Claviere', lat:44.9133,lng:6.8308, arr:'20:34',dep:'20:34',co:'IT'},
+    {id:'to',   name:'Torino Porta Susa',    lat:45.0706,lng:7.6676, arr:'21:22',dep:'21:22',co:'IT'},
+    {id:'mi',   name:'Milano Centrale',      lat:45.4862,lng:9.2046, arr:'22:07',co:'IT',isD:true}
   ]},
   '9292':{label:'FR 9292',stops:[
-    {id:'mi',   name:'Milano Centrale',       lat:45.4862,lng:9.2046, dep:'06:25',co:'IT',isO:true},
-    {id:'to',   name:'Torino Porta Susa',     lat:45.0706,lng:7.6676, arr:'07:14',dep:'07:14',co:'IT'},
-    {id:'oulx', name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308, arr:'07:59',dep:'07:59',co:'IT'},
-    {id:'mod',  name:'Modane',                lat:45.1944,lng:6.6594, arr:'08:30',dep:'08:30',co:'IT',border:true},
-    {id:'sj',   name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485, arr:'09:08',dep:'09:08',co:'FR',approx:true},
-    {id:'cham', name:'Chambéry',              lat:45.5646,lng:5.9178, arr:'09:54',dep:'09:54',co:'FR',approx:true},
-    {id:'lyon', name:'Lyon Part-Dieu',        lat:45.7601,lng:4.8296, arr:'11:24',dep:'11:24',co:'FR',approx:true},
-    {id:'paris',name:'Paris Gare de Lyon',    lat:48.8448,lng:2.3735, arr:'13:22',co:'FR',isD:true}
+    {id:'mi',   name:'Milano Centrale',      lat:45.4862,lng:9.2046, dep:'06:25',co:'IT',isO:true},
+    {id:'to',   name:'Torino Porta Susa',    lat:45.0706,lng:7.6676, arr:'07:14',dep:'07:14',co:'IT'},
+    {id:'oulx', name:'Oulx Cesana Claviere', lat:44.9133,lng:6.8308, arr:'07:59',dep:'07:59',co:'IT'},
+    {id:'mod',  name:'Modane',               lat:45.1944,lng:6.6594, arr:'08:30',dep:'08:30',co:'IT',border:true},
+    {id:'sj',   name:'St-Jean-de-Maurienne', lat:45.2745,lng:6.3485, arr:'09:08',dep:'09:08',co:'FR',approx:true},
+    {id:'cham', name:'Chambéry',             lat:45.5646,lng:5.9178, arr:'09:54',dep:'09:54',co:'FR',approx:true},
+    {id:'lyon', name:'Lyon Part-Dieu',       lat:45.7601,lng:4.8296, arr:'11:24',dep:'11:24',co:'FR',approx:true},
+    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735, arr:'13:22',co:'FR',isD:true}
   ]},
   '9296':{label:'FR 9296',stops:[
-    {id:'mi',   name:'Milano Centrale',       lat:45.4862,lng:9.2046, dep:'15:53',co:'IT',isO:true},
-    {id:'to',   name:'Torino Porta Susa',     lat:45.0706,lng:7.6676, arr:'16:42',dep:'16:42',co:'IT'},
-    {id:'oulx', name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308, arr:'17:27',dep:'17:27',co:'IT'},
-    {id:'mod',  name:'Modane',                lat:45.1944,lng:6.6594, arr:'17:53',dep:'17:53',co:'IT',border:true},
-    {id:'sj',   name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485, arr:'18:36',dep:'18:36',co:'FR',approx:true},
-    {id:'cham', name:'Chambéry',              lat:45.5646,lng:5.9178, arr:'19:22',dep:'19:22',co:'FR',approx:true},
-    {id:'lyon', name:'Lyon Part-Dieu',        lat:45.7601,lng:4.8296, arr:'20:52',dep:'20:52',co:'FR',approx:true},
-    {id:'paris',name:'Paris Gare de Lyon',    lat:48.8448,lng:2.3735, arr:'22:34',co:'FR',isD:true}
+    {id:'mi',   name:'Milano Centrale',      lat:45.4862,lng:9.2046, dep:'15:53',co:'IT',isO:true},
+    {id:'to',   name:'Torino Porta Susa',    lat:45.0706,lng:7.6676, arr:'16:42',dep:'16:42',co:'IT'},
+    {id:'oulx', name:'Oulx Cesana Claviere', lat:44.9133,lng:6.8308, arr:'17:27',dep:'17:27',co:'IT'},
+    {id:'mod',  name:'Modane',               lat:45.1944,lng:6.6594, arr:'17:53',dep:'17:53',co:'IT',border:true},
+    {id:'sj',   name:'St-Jean-de-Maurienne', lat:45.2745,lng:6.3485, arr:'18:36',dep:'18:36',co:'FR',approx:true},
+    {id:'cham', name:'Chambéry',             lat:45.5646,lng:5.9178, arr:'19:22',dep:'19:22',co:'FR',approx:true},
+    {id:'lyon', name:'Lyon Part-Dieu',       lat:45.7601,lng:4.8296, arr:'20:52',dep:'20:52',co:'FR',approx:true},
+    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735, arr:'22:34',co:'FR',isD:true}
   ]}
 };
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // MAP
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 const map = L.map('map',{zoomControl:false}).setView([46.5,5.8],6);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO', subdomains:'abcd', maxZoom:19
+}).addTo(map);
 L.control.zoom({position:'topright'}).addTo(map);
 map.whenReady(()=>document.getElementById('lod').classList.add('hidden'));
 
@@ -308,84 +555,74 @@ let pl=L.polyline([],{color:'#27c087',weight:4}).addTo(map);
 let hl=L.polyline([],{color:'#e63946',weight:5}).addTo(map);
 let trainM=null, smarks=[], bmark=null;
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 const S = {
   num:'9287', sch:SCH['9287'],
   delay:0, src:'schedule',
-  selectedDate: new Date(),   // the date user has selected
+  selectedDate:new Date(),
   calViewYear:0, calViewMonth:0,
-  lastPos:null, timer:null
+  lastPos:null, timer:null,
+  sheetOpen:false
 };
 
-// ═══════════════════════════════════════════════════════
-// CALENDAR
-// ═══════════════════════════════════════════════════════
-const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-const DAYS_IT = ['Lu','Ma','Me','Gi','Ve','Sa','Do'];
-
-function initCalView(){
-  const d = S.selectedDate;
-  S.calViewYear = d.getFullYear();
-  S.calViewMonth = d.getMonth();
+// ═══════════════════════════════════════
+// BOTTOM SHEET
+// ═══════════════════════════════════════
+function toggleSheet(){
+  S.sheetOpen = !S.sheetOpen;
+  document.getElementById('bottom-sheet').classList.toggle('open', S.sheetOpen);
+  // Invalidate map size when sheet opens/closes
+  setTimeout(()=>map.invalidateSize(), 350);
 }
+
+function openSheet(){ if(!S.sheetOpen) toggleSheet(); }
+function closeSheet(){ if(S.sheetOpen) toggleSheet(); }
+
+// ═══════════════════════════════════════
+// CALENDAR
+// ═══════════════════════════════════════
+const MONTHS_IT=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+function initCalView(){ S.calViewYear=S.selectedDate.getFullYear(); S.calViewMonth=S.selectedDate.getMonth(); }
 
 function renderCal(){
   const y=S.calViewYear, m=S.calViewMonth;
-  document.getElementById('cal-month-lbl').textContent = `${MONTHS_IT[m]} ${y}`;
-
-  const today = new Date(); today.setHours(0,0,0,0);
-  const maxDate = new Date(today); maxDate.setDate(today.getDate()+14); // allow up to 2 weeks ahead
-  const minDate = new Date(today); minDate.setDate(today.getDate()-1); // allow yesterday for missed trains
-
-  const firstDay = new Date(y, m, 1);
-  // Monday=0 offset (European calendar)
-  let startDow = firstDay.getDay() - 1; if(startDow<0) startDow=6;
-  const daysInMonth = new Date(y, m+1, 0).getDate();
-
-  const grid = document.getElementById('cal-days');
-  grid.innerHTML = '';
-
-  // Empty cells
-  for(let i=0;i<startDow;i++){
-    const el=document.createElement('div'); el.className='cal-day empty'; el.textContent='';
-    grid.appendChild(el);
-  }
-
-  for(let d=1;d<=daysInMonth;d++){
-    const date = new Date(y, m, d); date.setHours(0,0,0,0);
-    const el = document.createElement('div'); el.className='cal-day';
-    el.textContent = d;
-
-    const isToday = date.getTime()===today.getTime();
-    const isSelected = date.getTime()===new Date(S.selectedDate.getFullYear(),S.selectedDate.getMonth(),S.selectedDate.getDate()).getTime();
-    const isDisabled = date < minDate || date > maxDate;
-
-    if(isToday) el.classList.add('today');
-    if(isSelected) el.classList.add('selected');
-    if(isDisabled){ el.classList.add('disabled'); }
-    else{
-      el.addEventListener('click',()=>{ pickDate(new Date(y,m,d)); });
-    }
+  document.getElementById('cal-month-lbl').textContent=`${MONTHS_IT[m]} ${y}`;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const maxDate=new Date(today); maxDate.setDate(today.getDate()+14);
+  const minDate=new Date(today); minDate.setDate(today.getDate()-1);
+  let startDow=new Date(y,m,1).getDay()-1; if(startDow<0)startDow=6;
+  const dim=new Date(y,m+1,0).getDate();
+  const grid=document.getElementById('cal-days'); grid.innerHTML='';
+  for(let i=0;i<startDow;i++){const el=document.createElement('div');el.className='cal-day empty';grid.appendChild(el);}
+  for(let d=1;d<=dim;d++){
+    const date=new Date(y,m,d); date.setHours(0,0,0,0);
+    const el=document.createElement('div'); el.className='cal-day'; el.textContent=d;
+    if(date.getTime()===today.getTime()) el.classList.add('today');
+    const selD=new Date(S.selectedDate); selD.setHours(0,0,0,0);
+    if(date.getTime()===selD.getTime()) el.classList.add('selected');
+    if(date<minDate||date>maxDate) el.classList.add('disabled');
+    else el.addEventListener('click',()=>pickDate(new Date(y,m,d)));
     grid.appendChild(el);
   }
 }
 
 function calNav(dir){
-  S.calViewMonth += dir;
-  if(S.calViewMonth<0){ S.calViewMonth=11; S.calViewYear--; }
-  if(S.calViewMonth>11){ S.calViewMonth=0; S.calViewYear++; }
+  S.calViewMonth+=dir;
+  if(S.calViewMonth<0){S.calViewMonth=11;S.calViewYear--;}
+  if(S.calViewMonth>11){S.calViewMonth=0;S.calViewYear++;}
   renderCal();
 }
 
 function toggleCal(){
-  const drop = document.getElementById('cal-drop');
-  const disp = document.getElementById('date-display');
-  const showing = drop.classList.contains('show');
-  if(!showing){ initCalView(); renderCal(); }
-  drop.classList.toggle('show',!showing);
-  disp.classList.toggle('open',!showing);
+  const drop=document.getElementById('cal-drop');
+  const disp=document.getElementById('date-display');
+  const show=!drop.classList.contains('show');
+  if(show){initCalView();renderCal();}
+  drop.classList.toggle('show',show);
+  disp.classList.toggle('open',show);
 }
 
 function closeCal(){
@@ -394,107 +631,101 @@ function closeCal(){
 }
 
 function pickDate(date){
-  S.selectedDate = date;
-  updateDateDisplay();
-  updateShortcuts();
-  closeCal();
-  const isToday = isDateToday(date);
-  if(isToday){ refresh(); }
-  else{ S.delay=0; S.src='schedule'; clearInterval(S.timer); draw(); }
+  S.selectedDate=date;
+  updateDateDisplay(); updateShortcuts(); closeCal();
+  if(isDateToday(date)){
+    clearInterval(S.timer); refresh();
+    S.timer=setInterval(refresh,30000);
+  } else {
+    clearInterval(S.timer); S.delay=0; S.src='schedule'; draw();
+  }
 }
 
 function updateDateDisplay(){
-  const d = S.selectedDate;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-  let label = '';
-  if(isDateToday(d)) label = 'Oggi · ';
-  else if(d.getTime()===tomorrow.getTime()) label = 'Domani · ';
-  label += d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
-  document.getElementById('date-display-txt').textContent = label;
+  const d=S.selectedDate;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const tom=new Date(today); tom.setDate(today.getDate()+1);
+  const dc=new Date(d); dc.setHours(0,0,0,0);
+  let lbl='';
+  if(dc.getTime()===today.getTime()) lbl='Oggi · ';
+  else if(dc.getTime()===tom.getTime()) lbl='Domani · ';
+  lbl+=d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
+  document.getElementById('date-display-txt').textContent=lbl;
 }
 
 function isDateToday(d){
-  const t = new Date(); t.setHours(0,0,0,0);
-  const c = new Date(d); c.setHours(0,0,0,0);
+  const t=new Date(); t.setHours(0,0,0,0);
+  const c=new Date(d); c.setHours(0,0,0,0);
   return t.getTime()===c.getTime();
 }
 
 function updateShortcuts(){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-  document.getElementById('sc-today').classList.toggle('active', isDateToday(S.selectedDate));
-  document.getElementById('sc-tom').classList.toggle('active', S.selectedDate.getTime()===tomorrow.getTime());
+  const today=new Date(); today.setHours(0,0,0,0);
+  const tom=new Date(today); tom.setDate(today.getDate()+1);
+  const dc=new Date(S.selectedDate); dc.setHours(0,0,0,0);
+  document.getElementById('sc-today').classList.toggle('active',dc.getTime()===today.getTime());
+  document.getElementById('sc-tom').classList.toggle('active',dc.getTime()===tom.getTime());
 }
 
 function jumpToToday(){ pickDate(new Date()); }
 function jumpToTomorrow(){ const t=new Date(); t.setDate(t.getDate()+1); pickDate(t); }
 
-// Close cal on outside click
 document.addEventListener('click', e=>{
   if(!document.getElementById('date-picker-wrap').contains(e.target)) closeCal();
 });
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // UTILS
-// ═══════════════════════════════════════════════════════
-const toM = t=>{ if(!t)return null; const[h,m]=t.split(':').map(Number); return h*60+m; };
-const fmtM = m=>{ m=((m%1440)+1440)%1440; return`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; };
-const nowM = ()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+// ═══════════════════════════════════════
+const toM=t=>{ if(!t)return null; const[h,m]=t.split(':').map(Number); return h*60+m; };
+const fmtM=m=>{ m=((m%1440)+1440)%1440; return`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; };
+const nowM=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // POSITION
-// ═══════════════════════════════════════════════════════
-function getPos(stops, delay){
-  const isToday = isDateToday(S.selectedDate);
-  const delayToApply = isToday ? delay : 0;
-  const adj = nowM() - delayToApply;
-  const fd = toM(stops[0].dep);
-
-  // Future date or not yet departed
-  if(!isToday || adj < fd)
+// ═══════════════════════════════════════
+function getPos(stops,delay){
+  const adj=nowM()-(isDateToday(S.selectedDate)?delay:0);
+  const fd=toM(stops[0].dep);
+  if(!isDateToday(S.selectedDate)||adj<fd)
     return{lat:stops[0].lat,lng:stops[0].lng,sF:0,sT:0,p:0,ph:'waiting',si:0};
-
   for(let i=0;i<stops.length-1;i++){
-    const a=stops[i], b=stops[i+1];
-    const d0=toM(a.dep||a.arr), d1=toM(b.arr||b.dep);
-    if(!d0||!d1) continue;
+    const a=stops[i],b=stops[i+1];
+    const d0=toM(a.dep||a.arr),d1=toM(b.arr||b.dep);
+    if(!d0||!d1)continue;
     if(adj>=d0&&adj<=d1){
       const p=Math.min(1,Math.max(0,(adj-d0)/(d1-d0)));
-      return{lat:a.lat+(b.lat-a.lat)*p,lng:a.lng+(b.lng-a.lng)*p,
-             sF:i,sT:i+1,p,ph:'transit',fn:a.name,tn:b.name,inFR:a.co==='FR'||b.co==='FR'};
+      return{lat:a.lat+(b.lat-a.lat)*p,lng:a.lng+(b.lng-a.lng)*p,sF:i,sT:i+1,p,ph:'transit',fn:a.name,tn:b.name,inFR:a.co==='FR'||b.co==='FR'};
     }
     const nd=toM(b.dep);
-    if(nd&&adj>d1&&adj<nd)
-      return{lat:b.lat,lng:b.lng,sF:i+1,sT:i+1,p:1,ph:'station',si:i+1};
+    if(nd&&adj>d1&&adj<nd) return{lat:b.lat,lng:b.lng,sF:i+1,sT:i+1,p:1,ph:'station',si:i+1};
   }
-  return{lat:stops[stops.length-1].lat,lng:stops[stops.length-1].lng,
-         sF:stops.length-1,sT:stops.length-1,p:1,ph:'arrived'};
+  const last=stops[stops.length-1];
+  return{lat:last.lat,lng:last.lng,sF:stops.length-1,sT:stops.length-1,p:1,ph:'arrived'};
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // TRENITALIA API
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function fetchIT(num){
   const px=[u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`];
   for(const p of px){
     try{
       const r1=await fetch(p(`https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/cercaNumeroTrenoTrenitalia/${num}`));
-      if(!r1.ok) continue;
-      const d1=await r1.json();
-      if(!d1?.length) continue;
+      if(!r1.ok)continue;
+      const d1=await r1.json(); if(!d1?.length)continue;
       const{codOrigine:co,numeroTreno:nt}=d1[0];
       const r2=await fetch(p(`https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/andamentoTreno/${co}/${nt}/${Date.now()}`));
-      if(!r2.ok) continue;
+      if(!r2.ok)continue;
       return await r2.json();
     }catch{}
   }
   return null;
 }
 
-// ═══════════════════════════════════════════════════════
-// SNCF GTFS-RT (delay only, no GPS)
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// SNCF GTFS-RT
+// ═══════════════════════════════════════
 const PROTO=`syntax="proto2";package tr;
 message FeedMessage{required FeedHeader header=1;repeated FeedEntity entity=2;}
 message FeedHeader{required string gtfs_realtime_version=1;optional uint64 timestamp=3;}
@@ -503,26 +734,18 @@ message TripUpdate{required TripDescriptor trip=1;repeated StopTimeUpdate stop_t
 message TripDescriptor{optional string trip_id=1;optional string start_time=2;optional string start_date=3;}
 message StopTimeUpdate{optional uint32 stop_sequence=1;optional string stop_id=3;optional StopTimeEvent arrival=4;optional StopTimeEvent departure=5;}
 message StopTimeEvent{optional int64 time=1;optional int32 delay=2;}`;
-
 let protoRoot=null;
-async function getProto(){
-  if(protoRoot)return protoRoot;
-  try{protoRoot=await protobuf.parse(PROTO,{keepCase:true}).root;return protoRoot;}catch{return null;}
-}
-
+async function getProto(){ if(protoRoot)return protoRoot; try{protoRoot=await protobuf.parse(PROTO,{keepCase:true}).root;return protoRoot;}catch{return null;} }
 async function fetchFR(num){
   try{
-    const root=await getProto();
-    if(!root)return null;
+    const root=await getProto(); if(!root)return null;
     const FM=root.lookupType('tr.FeedMessage');
     const url='https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates';
     const px=[u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`];
     for(const p of px){
       try{
-        const r=await fetch(p(url));
-        if(!r.ok)continue;
-        const buf=await r.arrayBuffer();
-        const msg=FM.decode(new Uint8Array(buf));
+        const r=await fetch(p(url)); if(!r.ok)continue;
+        const msg=FM.decode(new Uint8Array(await r.arrayBuffer()));
         for(const e of(msg.entity||[])){
           const tid=e.trip_update?.trip?.trip_id||'';
           if(tid.includes(num)){
@@ -541,63 +764,46 @@ async function fetchFR(num){
   return null;
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // RENDER MAP
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function renderMap(stops,pos){
   rl.setLatLngs(stops.map(s=>[s.lat,s.lng]));
-  if(pos.ph==='transit'||pos.ph==='station'||pos.ph==='arrived'){
+  if(['transit','station','arrived'].includes(pos.ph)){
     pl.setLatLngs(stops.slice(0,pos.sF+1).map(s=>[s.lat,s.lng]));
     hl.setLatLngs([[stops[pos.sF].lat,stops[pos.sF].lng],[pos.lat,pos.lng]]);
   } else { pl.setLatLngs([]); hl.setLatLngs([]); }
-
   smarks.forEach(m=>map.removeLayer(m)); smarks=[];
-  if(bmark){ map.removeLayer(bmark); bmark=null; }
-
+  if(bmark){map.removeLayer(bmark);bmark=null;}
   stops.forEach((s,i)=>{
     const done=pos.ph!=='waiting'&&i<=pos.sF;
     const isE=s.isO||s.isD;
     const m=L.circleMarker([s.lat,s.lng],{
-      radius:isE?7:4,
+      radius:isE?8:5,
       fillColor:done?'#27c087':(isE?'#e63946':'#1e2840'),
       color:done?'#27c087':(isE?'#e63946':'#2d3d6a'),
       weight:2,fillOpacity:1
     }).addTo(map);
     const t=s.arr?`▸ ${s.arr}`:(s.dep?`◂ ${s.dep}`:'');
-    m.bindTooltip(`<b>${s.name}</b>${t?'<br>'+t:''}${s.approx?' <em>(approx.)</em>':''}`,{direction:'top'});
+    m.bindTooltip(`<b>${s.name}</b>${t?'<br>'+t:''}${s.approx?' <em>(appross.)</em>':''}`,{direction:'top'});
     smarks.push(m);
     if(s.border){
-      bmark=L.marker([s.lat,s.lng],{
-        icon:L.divIcon({html:'<div class="bl-icon">🇫🇷/🇮🇹</div>',className:'',iconAnchor:[22,20]}),
-        zIndexOffset:500
-      }).addTo(map);
+      bmark=L.marker([s.lat,s.lng],{icon:L.divIcon({html:'<div class="bl-icon">🇫🇷/🇮🇹</div>',className:'',iconAnchor:[30,22]}),zIndexOffset:500}).addTo(map);
     }
   });
-
   if(!trainM) trainM=L.marker([pos.lat,pos.lng],{
-    icon:L.divIcon({html:`<div style="font-size:20px;filter:drop-shadow(0 0 8px rgba(230,57,70,.9))">🚄</div>`,className:'',iconSize:[24,24],iconAnchor:[12,12]}),
+    icon:L.divIcon({html:`<div style="font-size:22px;filter:drop-shadow(0 0 9px rgba(230,57,70,.95))">🚄</div>`,className:'',iconSize:[26,26],iconAnchor:[13,13]}),
     zIndexOffset:1000
   }).addTo(map);
   else trainM.setLatLng([pos.lat,pos.lng]);
   S.lastPos=pos;
 }
 
-// ═══════════════════════════════════════════════════════
-// RENDER SIDEBAR
-// ═══════════════════════════════════════════════════════
-function renderSB(stops,pos){
-  document.getElementById('sb-title').textContent = S.sch.label + ' · ' + S.selectedDate.toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'});
-  const de=document.getElementById('st-d');
-  if(!S.delay){ de.textContent='In orario'; de.className='sv neg'; }
-  else{ de.textContent=`${S.delay>0?'+':''}${S.delay}min`; de.className='sv '+(S.delay>0?'pos':'neg'); }
-
-  const last=stops[stops.length-1];
-  document.getElementById('st-e').textContent=fmtM(toM(last.arr||last.dep)+S.delay);
-  document.getElementById('st-p').textContent = {waiting:'Attesa',transit:'In viaggio',station:'In fermata',arrived:'Arrivato'}[pos.ph]||'—';
-
-  document.getElementById('fr-box').style.display = stops.some(s=>s.co==='FR') ? 'block' : 'none';
-
-  const list=document.getElementById('slist'); list.innerHTML='';
+// ═══════════════════════════════════════
+// BUILD STOP LIST HTML (shared)
+// ═══════════════════════════════════════
+function buildStops(stops,pos,targetEl){
+  targetEl.innerHTML='';
   stops.forEach((s,i)=>{
     const passed=pos.ph!=='waiting'&&i<pos.sF;
     const isCur=(pos.ph==='station'&&pos.si===i)||(pos.ph==='arrived'&&i===stops.length-1);
@@ -608,109 +814,134 @@ function renderSB(stops,pos){
     const tag=s.border?'<span class="tag bo">confine</span>':s.co==='FR'?'<span class="tag fr">FR</span>':'<span class="tag it">IT</span>';
     const del=(S.delay&&!passed&&S.src!=='schedule')?`<span class="sdel ${S.delay>0?'pos':'neg'}">${S.delay>0?'+':''}${S.delay}'</span>`:'';
     const note=(!passed&&s.approx)?'<div class="snote">⚠ orario approssimativo</div>':'';
-    row.innerHTML=`<div class="spine"><div class="${dc}"></div>${i<stops.length-1?`<div class="lc${passed?' done':''}" style="height:42px"></div>`:''}</div><div class="si"><div class="${nc}">${s.name}</div><div class="sm"><span class="stm">${ts}</span>${tag}${del}</div>${note}</div>`;
-    list.appendChild(row);
+    row.innerHTML=`<div class="spine"><div class="${dc}"></div>${i<stops.length-1?`<div class="lc${passed?' done':''}" style="height:46px"></div>`:''}</div><div class="si"><div class="${nc}">${s.name}</div><div class="sm"><span class="stm">${ts}</span>${tag}${del}</div>${note}</div>`;
+    targetEl.appendChild(row);
   });
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// RENDER SIDEBAR (desktop)
+// ═══════════════════════════════════════
+function renderSB(stops,pos){
+  document.getElementById('sb-title').textContent=S.sch.label+' · '+S.selectedDate.toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'});
+  const de=document.getElementById('st-d');
+  if(!S.delay){de.textContent='In orario';de.className='sv neg';}
+  else{de.textContent=`${S.delay>0?'+':''}${S.delay} min`;de.className='sv '+(S.delay>0?'pos':'neg');}
+  const last=stops[stops.length-1];
+  document.getElementById('st-e').textContent=fmtM(toM(last.arr||last.dep)+S.delay);
+  document.getElementById('st-p').textContent={waiting:'Attesa',transit:'In viaggio',station:'In fermata',arrived:'Arrivato'}[pos.ph]||'—';
+  document.getElementById('fr-box').style.display=stops.some(s=>s.co==='FR')?'block':'none';
+  buildStops(stops,pos,document.getElementById('slist'));
+}
+
+// ═══════════════════════════════════════
+// RENDER BOTTOM SHEET (mobile)
+// ═══════════════════════════════════════
+function renderBS(stops,pos){
+  const de=document.getElementById('bs-delay');
+  if(!S.delay){de.textContent='In orario';de.className='bs-sv';de.style.color='var(--green)';}
+  else{de.textContent=`${S.delay>0?'+':''}${S.delay}min`;de.style.color=S.delay>0?'var(--yellow)':'var(--green)';}
+  const last=stops[stops.length-1];
+  document.getElementById('bs-eta').textContent=fmtM(toM(last.arr||last.dep)+S.delay);
+  document.getElementById('bs-phase').textContent={waiting:'Attesa',transit:'In viaggio',station:'Fermata',arrived:'Arrivato'}[pos.ph]||'—';
+  document.getElementById('bs-fr-box').style.display=stops.some(s=>s.co==='FR')?'block':'none';
+  buildStops(stops,pos,document.getElementById('bs-list'));
+}
+
+// ═══════════════════════════════════════
 // RENDER OVERLAYS
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function renderOV(stops,pos){
   ['pp','sp','cbtn'].forEach(id=>document.getElementById(id).style.display='block');
   const ov=document.getElementById('sov');
-  const isTodayDate=isDateToday(S.selectedDate);
-
   if(pos.ph==='waiting'||pos.ph==='arrived'){
     ov.style.display='flex';
     if(pos.ph==='waiting'){
-      const dateLbl = isTodayDate ? 'Oggi' : S.selectedDate.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
-      ov.innerHTML=`<div class="sob"><div class="sob-i">🕐</div><div class="sob-t">Non ancora partito</div><div class="sob-s">${dateLbl} · Partenza ore ${stops[0].dep}</div></div>`;
+      const dl=isDateToday(S.selectedDate)?'Oggi':S.selectedDate.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
+      ov.innerHTML=`<div class="sob"><div class="sob-i">🕐</div><div class="sob-t">Non ancora partito</div><div class="sob-s">${dl} · Partenza ore ${stops[0].dep}</div></div>`;
     } else {
       ov.innerHTML=`<div class="sob"><div class="sob-i">✅</div><div class="sob-t">Viaggio completato</div><div class="sob-s">Arrivato a ${stops[stops.length-1].name}</div></div>`;
     }
   } else { ov.style.display='none'; }
 
-  const pm=document.getElementById('ppm'), ps=document.getElementById('pps'), pc=document.getElementById('ppc');
-  if(pos.ph==='waiting'){ pm.textContent=stops[0].name; ps.textContent=`Partenza ore ${stops[0].dep}`; }
-  else if(pos.ph==='station'){ pm.textContent=stops[pos.si].name; ps.textContent='In fermata'; }
-  else if(pos.ph==='arrived'){ pm.textContent=stops[stops.length-1].name; ps.textContent='✓ Arrivato'; }
-  else{ pm.textContent=pos.fn; ps.textContent=`→ ${pos.tn}${pos.inFR?' · 🇫🇷 interpolato':''}`; }
+  const pm=document.getElementById('ppm'),ps=document.getElementById('pps'),pc=document.getElementById('ppc');
+  if(pos.ph==='waiting'){pm.textContent=stops[0].name;ps.textContent=`Partenza ore ${stops[0].dep}`;}
+  else if(pos.ph==='station'){pm.textContent=stops[pos.si].name;ps.textContent='In fermata';}
+  else if(pos.ph==='arrived'){pm.textContent=stops[stops.length-1].name;ps.textContent='✓ Arrivato';}
+  else{pm.textContent=pos.fn;ps.textContent=`→ ${pos.tn}${pos.inFR?' · 🇫🇷 interpolato':''}`;}
   pc.textContent=`${pos.lat.toFixed(4)}°N  ${pos.lng.toFixed(4)}°E`;
 
-  const dot=document.getElementById('ldot'), lbl=document.getElementById('live-lbl');
+  // Live badge — update all instances
   const now=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  if(S.src==='live-it'){ dot.className='dot live'; lbl.textContent=`live IT · ${now}`; }
-  else if(S.src==='live-fr'){ dot.className='dot est'; lbl.textContent=`SNCF GTFS-RT · ${now}`; }
-  else{ dot.className='dot'; lbl.textContent=`orario · ${now}`; }
+  const dotClass=S.src==='live-it'?'dot live':S.src==='live-fr'?'dot est':'dot';
+  const lblTxt=S.src==='live-it'?`live IT · ${now}`:S.src==='live-fr'?`SNCF · ${now}`:`orario · ${now}`;
+  ['ldot','ldot-desk'].forEach(id=>{ const el=document.getElementById(id); if(el)el.className=dotClass; });
+  ['live-lbl','live-lbl-desk'].forEach(id=>{ const el=document.getElementById(id); if(el)el.textContent=lblTxt; });
 
-  const sm={'schedule':'🟡 Da orario','live-it':'🟢 Live Trenitalia (IT)','live-fr':'🟠 SNCF GTFS-RT (FR)'};
-  document.getElementById('spt-txt').textContent=(sm[S.src]||'🟡 Da orario')+` · ${now}`;
+  const srcMap={'schedule':'🟡 Da orario','live-it':'🟢 Live Trenitalia (IT)','live-fr':'🟠 SNCF GTFS-RT (FR)'};
+  document.getElementById('spt-txt').textContent=(srcMap[S.src]||'🟡 Da orario')+` · ${now}`;
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // REFRESH
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function refresh(){
   document.getElementById('btn-refresh').textContent='↻ ...';
+  document.getElementById('hdr-refresh').textContent='↻';
   if(isDateToday(S.selectedDate)){
     const it=await fetchIT(S.num);
-    if(it&&typeof it.ritardo==='number'){ S.delay=it.ritardo; S.src='live-it'; }
+    if(it&&typeof it.ritardo==='number'){S.delay=it.ritardo;S.src='live-it';}
     else{
       const fr=await fetchFR(S.num);
-      if(fr!==null){ S.delay=fr; S.src='live-fr'; }
-      else{ S.delay=0; S.src='schedule'; }
+      if(fr!==null){S.delay=fr;S.src='live-fr';}
+      else{S.delay=0;S.src='schedule';}
     }
-  } else { S.delay=0; S.src='schedule'; }
+  } else {S.delay=0;S.src='schedule';}
   draw();
   document.getElementById('btn-refresh').textContent='↻ Aggiorna';
 }
 
 function draw(){
-  const stops=S.sch.stops;
-  const pos=getPos(stops,S.delay);
+  const stops=S.sch.stops, pos=getPos(stops,S.delay);
   renderMap(stops,pos);
   renderSB(stops,pos);
+  renderBS(stops,pos);
   renderOV(stops,pos);
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // CONTROLS
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function selectTrain(num){
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('active',b.textContent.includes('FR '+num)));
   document.getElementById('ntm').style.display='none';
-  const sch=SCH[num];
-  if(!sch){ alert(`Treno ${num} non trovato.`); return; }
+  const sch=SCH[num]; if(!sch){alert(`Treno ${num} non trovato.`);return;}
   S.num=num; S.sch=sch; S.delay=0; S.src='schedule';
   pl.setLatLngs([]); hl.setLatLngs([]);
   smarks.forEach(m=>map.removeLayer(m)); smarks=[];
-  if(trainM){ map.removeLayer(trainM); trainM=null; }
-  if(bmark){ map.removeLayer(bmark); bmark=null; }
+  if(trainM){map.removeLayer(trainM);trainM=null;}
+  if(bmark){map.removeLayer(bmark);bmark=null;}
   map.fitBounds(sch.stops.map(s=>[s.lat,s.lng]),{padding:[30,30]});
-  clearInterval(S.timer);
-  refresh();
+  clearInterval(S.timer); refresh();
   if(isDateToday(S.selectedDate)) S.timer=setInterval(refresh,30000);
 }
 
 function goCustom(){
-  const v=document.getElementById('cin').value.trim();
-  if(!v) return;
-  if(SCH[v]){ selectTrain(v); return; }
-  alert(`Treno ${v} non è nei 4 Frecciarossa Paris↔Milano.\n\nPer altri treni: treniamo.it o viaggiatreno.it`);
+  const v=document.getElementById('cin').value.trim(); if(!v)return;
+  if(SCH[v]){selectTrain(v);return;}
+  alert(`Treno ${v} non è nei 4 Frecciarossa Paris↔Milano.\n\nPer altri treni: treniamo.it`);
 }
 
 function centerTrain(){
   if(S.lastPos) map.setView([S.lastPos.lat,S.lastPos.lng],9,{animate:true});
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // BOOT
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 window.addEventListener('load',()=>{
-  S.selectedDate = new Date();
-  updateDateDisplay();
-  updateShortcuts();
+  S.selectedDate=new Date();
+  updateDateDisplay(); updateShortcuts();
   selectTrain('9287');
 });
 </script>
