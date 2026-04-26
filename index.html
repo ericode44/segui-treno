@@ -516,6 +516,39 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
 
 <script>
 // ═══════════════════════════════════════
+// ROUTE WAYPOINTS (Paris → Milano direction)
+// Intermediate coords that follow the actual railway.
+// Reverse direction is computed automatically.
+// ═══════════════════════════════════════
+const ROUTE_WPT = {
+  'paris->lyon': [
+    [48.64,2.58],[48.39,2.80],[48.11,3.11],
+    [47.83,3.52],[47.42,4.14],[47.11,4.85],
+    [46.68,4.89],[46.18,4.85]
+  ],
+  'lyon->cham': [
+    [45.82,5.03],[45.96,5.36],[45.85,5.62],[45.70,5.88]
+  ],
+  'cham->sj': [
+    [45.51,6.07],[45.45,6.16],[45.35,6.27]
+  ],
+  'sj->mod': [
+    [45.25,6.43],[45.22,6.55],[45.20,6.62]
+  ],
+  'mod->oulx': [
+    [45.08,6.70],[44.97,6.77]
+  ],
+  'oulx->to': [
+    [44.96,6.85],[45.07,6.98],[45.13,7.05],
+    [45.14,7.16],[45.10,7.34],[45.08,7.40],[45.07,7.54]
+  ],
+  'to->mi': [
+    [45.09,7.74],[45.19,7.89],[45.32,8.42],
+    [45.45,8.63],[45.53,9.04]
+  ]
+};
+
+// ═══════════════════════════════════════
 // SCHEDULES
 // ═══════════════════════════════════════
 const SCH = {
@@ -607,7 +640,8 @@ const S = {
   selectedDate:new Date(),
   calViewYear:0, calViewMonth:0,
   lastPos:null, timer:null,
-  sheetOpen:false
+  sheetOpen:false,
+  locationName:null
 };
 
 // ═══════════════════════════════════════
@@ -718,6 +752,87 @@ document.addEventListener('click', e=>{
 });
 
 // ═══════════════════════════════════════
+// ROUTE HELPERS
+// ═══════════════════════════════════════
+function segDist([la1,ln1],[la2,ln2]){ const d=la2-la1,e=ln2-ln1; return Math.sqrt(d*d+e*e); }
+
+function getSegWpts(a,b){
+  const k=a.id+'->'+b.id, r=b.id+'->'+a.id;
+  if(ROUTE_WPT[k]) return ROUTE_WPT[k];
+  if(ROUTE_WPT[r]) return [...ROUTE_WPT[r]].reverse();
+  return [];
+}
+
+function buildSegPts(a,b){
+  return [[a.lat,a.lng],...getSegWpts(a,b),[b.lat,b.lng]];
+}
+
+function buildRoutePts(stops,from,to){
+  const pts=[[stops[from].lat,stops[from].lng]];
+  for(let i=from;i<to;i++){
+    getSegWpts(stops[i],stops[i+1]).forEach(w=>pts.push(w));
+    pts.push([stops[i+1].lat,stops[i+1].lng]);
+  }
+  return pts;
+}
+
+function lerpPolyline(pts,p){
+  const dists=[]; let total=0;
+  for(let i=0;i<pts.length-1;i++){const d=segDist(pts[i],pts[i+1]);dists.push(d);total+=d;}
+  let t=total*Math.min(1,Math.max(0,p));
+  for(let i=0;i<dists.length;i++){
+    if(t<=dists[i]||i===dists.length-1){
+      const f=dists[i]>0?t/dists[i]:0;
+      return{lat:pts[i][0]+(pts[i+1][0]-pts[i][0])*f, lng:pts[i][1]+(pts[i+1][1]-pts[i][1])*f};
+    }
+    t-=dists[i];
+  }
+  return{lat:pts[pts.length-1][0],lng:pts[pts.length-1][1]};
+}
+
+function partialPoly(pts,p){
+  const dists=[]; let total=0;
+  for(let i=0;i<pts.length-1;i++){const d=segDist(pts[i],pts[i+1]);dists.push(d);total+=d;}
+  let t=total*Math.min(1,Math.max(0,p));
+  const res=[pts[0]];
+  for(let i=0;i<dists.length;i++){
+    if(t<=dists[i]){
+      const f=dists[i]>0?t/dists[i]:0;
+      res.push([pts[i][0]+(pts[i+1][0]-pts[i][0])*f,pts[i][1]+(pts[i+1][1]-pts[i][1])*f]);
+      break;
+    }
+    res.push(pts[i+1]); t-=dists[i];
+  }
+  return res;
+}
+
+// ═══════════════════════════════════════
+// REVERSE GEOCODING (Nominatim)
+// ═══════════════════════════════════════
+const _geoCache={};
+let _geoPending=false;
+async function reverseGeocode(lat,lng){
+  const key=`${lat.toFixed(2)},${lng.toFixed(2)}`;
+  if(_geoCache[key]) return _geoCache[key];
+  if(_geoPending) return null;
+  _geoPending=true;
+  try{
+    const r=await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=it`,
+      {headers:{'User-Agent':'FrecciaTracker/1.0'}}
+    );
+    if(r.ok){
+      const d=await r.json();
+      const a=d.address||{};
+      const name=a.city||a.town||a.village||a.hamlet||a.suburb||a.municipality||a.county||null;
+      if(name){_geoCache[key]=name; return name;}
+    }
+  }catch{}
+  finally{_geoPending=false;}
+  return null;
+}
+
+// ═══════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════
 const toM=t=>{ if(!t)return null; const[h,m]=t.split(':').map(Number); return h*60+m; };
@@ -738,7 +853,9 @@ function getPos(stops,delay){
     if(!d0||!d1)continue;
     if(adj>=d0&&adj<=d1){
       const p=Math.min(1,Math.max(0,(adj-d0)/(d1-d0)));
-      return{lat:a.lat+(b.lat-a.lat)*p,lng:a.lng+(b.lng-a.lng)*p,sF:i,sT:i+1,p,ph:'transit',fn:a.name,tn:b.name,inFR:a.co==='FR'||b.co==='FR'};
+      const segPts=buildSegPts(a,b);
+      const{lat,lng}=lerpPolyline(segPts,p);
+      return{lat,lng,sF:i,sT:i+1,p,ph:'transit',fn:a.name,tn:b.name,inFR:a.co==='FR'||b.co==='FR',segPts};
     }
     const nd=toM(b.dep);
     if(nd&&adj>d1&&adj<nd) return{lat:b.lat,lng:b.lng,sF:i+1,sT:i+1,p:1,ph:'station',si:i+1};
@@ -811,10 +928,13 @@ async function fetchFR(num){
 // RENDER MAP
 // ═══════════════════════════════════════
 function renderMap(stops,pos){
-  rl.setLatLngs(stops.map(s=>[s.lat,s.lng]));
+  rl.setLatLngs(buildRoutePts(stops,0,stops.length-1));
   if(['transit','station','arrived'].includes(pos.ph)){
-    pl.setLatLngs(stops.slice(0,pos.sF+1).map(s=>[s.lat,s.lng]));
-    hl.setLatLngs([[stops[pos.sF].lat,stops[pos.sF].lng],[pos.lat,pos.lng]]);
+    const traveled=buildRoutePts(stops,0,pos.sF);
+    if(pos.ph==='transit') traveled.push([pos.lat,pos.lng]);
+    pl.setLatLngs(traveled);
+    if(pos.ph==='transit'&&pos.segPts) hl.setLatLngs(partialPoly(pos.segPts,pos.p));
+    else hl.setLatLngs([]);
   } else { pl.setLatLngs([]); hl.setLatLngs([]); }
   smarks.forEach(m=>map.removeLayer(m)); smarks=[];
   if(bmark){map.removeLayer(bmark);bmark=null;}
@@ -911,8 +1031,13 @@ function renderOV(stops,pos){
   if(pos.ph==='waiting'){pm.textContent=stops[0].name;ps.textContent=`Partenza ore ${stops[0].dep}`;}
   else if(pos.ph==='station'){pm.textContent=stops[pos.si].name;ps.textContent='In fermata';}
   else if(pos.ph==='arrived'){pm.textContent=stops[stops.length-1].name;ps.textContent='✓ Arrivato';}
-  else{pm.textContent=pos.fn;ps.textContent=`→ ${pos.tn}${pos.inFR?' · 🇫🇷 interpolato':''}`;}
-  pc.textContent=`${pos.lat.toFixed(4)}°N  ${pos.lng.toFixed(4)}°E`;
+  else{
+    ps.textContent=`→ ${pos.tn}${pos.inFR?' · 🇫🇷 interpolato':''}`;
+    pm.textContent=S.locationName||pos.fn;
+    reverseGeocode(pos.lat,pos.lng).then(name=>{
+      if(name){S.locationName=name;document.getElementById('ppm').textContent=name;}
+    });
+  }  pc.textContent=`${pos.lat.toFixed(4)}°N  ${pos.lng.toFixed(4)}°E`;
 
   // Live badge — update all instances
   const now=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
@@ -959,7 +1084,7 @@ function selectTrain(num){
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('active',b.textContent.includes('FR '+num)));
   document.getElementById('ntm').style.display='none';
   const sch=SCH[num]; if(!sch){alert(`Treno ${num} non trovato.`);return;}
-  S.num=num; S.sch=sch; S.delay=0; S.src='schedule';
+  S.num=num; S.sch=sch; S.delay=0; S.src='schedule'; S.locationName=null;
   pl.setLatLngs([]); hl.setLatLngs([]);
   smarks.forEach(m=>map.removeLayer(m)); smarks=[];
   if(trainM){map.removeLayer(trainM);trainM=null;}
