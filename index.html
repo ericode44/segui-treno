@@ -43,7 +43,7 @@ body{ font-family:var(--sans); background:var(--bg); color:var(--text); display:
 }
 .logo .hl{ color:var(--red); }
 /* Live badge in header (desktop shows in train-bar, mobile shows here) */
-#hdr-badge{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+#hdr-badge{ margin-left:auto; display:none; align-items:center; gap:8px; }
 .dot{ width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; }
 .dot.live{ background:var(--green); box-shadow:0 0 7px var(--green); animation:blink 2s infinite; }
 .dot.est{  background:var(--yellow); box-shadow:0 0 7px var(--yellow); animation:blink 2s infinite; }
@@ -198,13 +198,6 @@ body{ font-family:var(--sans); background:var(--bg); color:var(--text); display:
 .sl{ font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-top:3px; }
 .pos{ color:var(--yellow)!important; }
 .neg{ color:var(--green)!important; }
-#fr-box{
-  display:none; margin:10px 16px;
-  background:rgba(78,142,247,.06); border:1px solid rgba(78,142,247,.15);
-  border-radius:6px; padding:11px 13px; flex-shrink:0;
-}
-.fr-t{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:1.5px; color:var(--blue); margin-bottom:6px; }
-.fr-b{ color:#506080; font-size:12px; line-height:1.6; }
 #slist{ flex:1; overflow-y:auto; padding:6px 0; }
 #slist::-webkit-scrollbar{ width:3px; }
 #slist::-webkit-scrollbar-thumb{ background:var(--border); border-radius:2px; }
@@ -225,11 +218,15 @@ body{ font-family:var(--sans); background:var(--bg); color:var(--text); display:
 .sm{ display:flex; align-items:center; gap:6px; margin-top:3px; flex-wrap:wrap; }
 .stm{ font-family:var(--mono); font-size:11px; color:var(--muted); }
 .tag{ font-size:9px; padding:2px 6px; border-radius:3px; letter-spacing:.5px; text-transform:uppercase; font-weight:600; }
-.tag.fr{ background:#182040; color:#6a8cff; }
-.tag.it{ background:#162815; color:#4ec978; }
-.tag.bo{ background:#2a1e0e; color:#f4a261; }
 .sdel{ font-family:var(--mono); font-size:11px; }
-.snote{ font-size:11px; color:#253050; margin-top:2px; font-style:italic; }
+.dc.next{ border-color:var(--blue); background:var(--bg); box-shadow:0 0 6px var(--blue); }
+.sn.next{ color:var(--blue); }
+.sbin{ font-family:var(--mono); font-size:10px; color:var(--blue); background:rgba(78,142,247,.12); padding:1px 5px; border-radius:3px; }
+.sdep-r{ font-family:var(--mono); font-size:10px; color:var(--green); }
+.snote{ font-size:11px; color:var(--muted); margin-top:2px; font-style:italic; }
+.tag.fr{ background:rgba(106,140,255,.15); color:var(--blue); }
+.tag.it{ background:rgba(78,201,120,.12); color:var(--green); }
+.tag.bo{ background:rgba(244,162,97,.12); color:var(--yellow); }
 
 /* ══════════════════════════════════
    MAP OVERLAYS
@@ -243,7 +240,6 @@ body{ font-family:var(--sans); background:var(--bg); color:var(--text); display:
 .pp-l{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:2px; color:var(--muted); margin-bottom:8px; }
 .pp-m{ font-size:16px; font-weight:700; color:var(--text); line-height:1.3; }
 .pp-s{ font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:4px; }
-#sp{ bottom:24px; right:14px; padding:7px 13px; font-family:var(--mono); font-size:10px; color:var(--muted); display:none; }
 #cbtn{
   position:absolute; top:14px; right:14px; z-index:900;
   background:rgba(9,11,15,.92); border:1px solid var(--border); color:var(--text);
@@ -342,15 +338,16 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
   #bottom-sheet{ display:flex; }
   #hdr-refresh{ display:flex; }
   #btn-refresh{ display:none; }
-  #bar-right{ display:none; } /* badge moves to header */
+  #bar-right #ldot-desk, #bar-right #live-lbl-desk{ display:none; } /* badge moves to header */
+  #hdr-badge{ display:flex; } /* show badge in header on mobile */
   /* Map overlays: position panel only, centered bottom */
   #pp{
     left:50%; transform:translateX(-50%);
     bottom:84px; /* above bottom sheet peek */
     min-width:260px; max-width:calc(100vw - 28px);
   }
-  #sp{ display:none !important; } /* source info is in header badge */
-  #cbtn{ top:10px; right:10px; font-size:11px; padding:8px 12px; }
+  /* Center button: above bottom sheet, clear of zoom controls */
+  #cbtn{ top:auto; bottom:90px; right:10px; font-size:11px; padding:8px 12px; z-index:950; }
   /* Calendar goes fixed + centered on mobile */
   #cal-drop{
     position:fixed; left:50%; top:50%;
@@ -391,7 +388,6 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
     <div class="dot" id="ldot"></div>
     <span id="live-lbl">—</span>
   </div>
-  <button id="theme-toggle" onclick="toggleTheme()" title="Cambia tema">🌙</button>
   <button id="hdr-refresh" onclick="refresh()" title="Aggiorna">↻</button>
 </div>
 
@@ -417,6 +413,7 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
   <div id="bar-right">
     <div class="dot" id="ldot-desk"></div>
     <span id="live-lbl-desk" style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap">—</span>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Cambia tema">🌙</button>
   </div>
 </div>
 
@@ -463,8 +460,6 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
       <div class="pp-m" id="ppm">—</div>
       <div class="pp-s" id="pps"></div>
     </div>
-    <!-- Source tag (desktop only) -->
-    <div class="mp" id="sp"><span id="spt-txt"></span></div>
     <button id="cbtn" onclick="centerTrain()">⊕ Centra</button>
   </div>
 
@@ -475,10 +470,6 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
       <div><div class="sv" id="st-d">—</div><div class="sl">Ritardo</div></div>
       <div><div class="sv" id="st-e">—</div><div class="sl">Arrivo</div></div>
       <div><div class="sv" id="st-p">—</div><div class="sl">Stato</div></div>
-    </div>
-    <div id="fr-box">
-      <div class="fr-t">🇫🇷 Sezione Francese</div>
-      <div class="fr-b">SNCF non pubblica posizioni GPS. La posizione è <strong>interpolata dall'orario</strong>. I ritardi FR vengono recuperati dal feed GTFS-RT SNCF.</div>
     </div>
     <div id="slist"></div>
   </div>
@@ -504,10 +495,6 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
     </div>
   </div>
   <div id="bs-body">
-    <div id="bs-fr-box" style="display:none;margin:8px 14px;background:rgba(78,142,247,.06);border:1px solid rgba(78,142,247,.15);border-radius:6px;padding:10px 12px">
-      <div class="fr-t">🇫🇷 Sezione Francese</div>
-      <div class="fr-b">SNCF non pubblica posizioni GPS. Posizione interpolata dall'orario.</div>
-    </div>
     <div id="bs-list"></div>
   </div>
 </div>
@@ -636,9 +623,10 @@ const S = {
   delay:0, src:'schedule',
   selectedDate:new Date(),
   calViewYear:0, calViewMonth:0,
-  lastPos:null, timer:null,
+  lastPos:null, timer:null, posTimer:null,
   sheetOpen:false,
-  locationName:null
+  locationName:null,
+  itData:null
 };
 
 // ═══════════════════════════════════════
@@ -708,10 +696,11 @@ function pickDate(date){
   S.selectedDate=date;
   updateDateDisplay(); updateShortcuts(); closeCal();
   if(isDateToday(date)){
-    clearInterval(S.timer); refresh();
+    clearInterval(S.timer); clearInterval(S.posTimer); refresh();
     S.timer=setInterval(refresh,30000);
+    S.posTimer=setInterval(drawPos,10000);
   } else {
-    clearInterval(S.timer); S.delay=0; S.src='schedule'; draw();
+    clearInterval(S.timer); clearInterval(S.posTimer); S.delay=0; S.src='schedule'; draw();
   }
 }
 
@@ -807,26 +796,27 @@ function partialPoly(pts,p){
 // REVERSE GEOCODING (Nominatim)
 // ═══════════════════════════════════════
 const _geoCache={};
-let _geoPending=false;
-async function reverseGeocode(lat,lng){
+let _geoTimer=null, _lastGeoKey='';
+function scheduleGeocode(lat,lng,callback){
   const key=`${lat.toFixed(2)},${lng.toFixed(2)}`;
-  if(_geoCache[key]) return _geoCache[key];
-  if(_geoPending) return null;
-  _geoPending=true;
-  try{
-    const r=await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=it`,
-      {headers:{'User-Agent':'FrecciaTracker/1.0'}}
-    );
-    if(r.ok){
-      const d=await r.json();
-      const a=d.address||{};
-      const name=a.city||a.town||a.village||a.hamlet||a.suburb||a.municipality||a.county||null;
-      if(name){_geoCache[key]=name; return name;}
-    }
-  }catch{}
-  finally{_geoPending=false;}
-  return null;
+  if(_geoCache[key]){callback(_geoCache[key]);return;}
+  if(key===_lastGeoKey)return;
+  clearTimeout(_geoTimer);
+  _geoTimer=setTimeout(async()=>{
+    _lastGeoKey=key;
+    try{
+      const r=await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=it`,
+        {headers:{'User-Agent':'FrecciaTracker/1.0'}}
+      );
+      if(r.ok){
+        const d=await r.json();
+        const a=d.address||{};
+        const name=a.city||a.town||a.village||a.hamlet||a.suburb||a.municipality||a.county||null;
+        if(name){_geoCache[key]=name;callback(name);}
+      }
+    }catch{}
+  },1500);
 }
 
 // ═══════════════════════════════════════
@@ -837,6 +827,52 @@ const fmtM=m=>{ m=((m%1440)+1440)%1440; return`${String(Math.floor(m/60)).padSta
 const nowM=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
 
 // ═══════════════════════════════════════
+// STOP MATCHING (Trenitalia ↔ our stops)
+// ═══════════════════════════════════════
+function matchStop(stop,fm){
+  if(!fm.stazione||!stop.name)return false;
+  const sl=stop.name.toLowerCase(), fl=fm.stazione.toLowerCase();
+  // Match on significant words (>3 chars)
+  const words=sl.split(/\s+/).filter(w=>w.length>3);
+  return words.some(w=>fl.includes(w));
+}
+
+// Returns array of booleans: true = stop has actually been passed per Trenitalia data
+function getPassedStops(stops,pos){
+  if(S.itData?.fermate&&isDateToday(S.selectedDate)){
+    const passed=new Array(stops.length).fill(false);
+    S.itData.fermate.forEach(fm=>{
+      // actualFermataType 1=arrived, 2=in station, anything ≥1 = train reached it
+      if(fm.actualFermataType&&fm.actualFermataType>=1){
+        const idx=stops.findIndex(s=>matchStop(s,fm));
+        if(idx!==-1)passed[idx]=true;
+      }
+    });
+    // propagate: all stops before the last passed one are also passed
+    const last=passed.lastIndexOf(true);
+    for(let i=0;i<=last;i++)passed[i]=true;
+    return passed;
+  }
+  // Fallback: time-based
+  return stops.map((_,i)=>
+    pos.ph!=='waiting'&&(pos.ph==='transit'?i<=pos.sF:i<pos.sF)
+  );
+}
+
+// Last index confirmed passed by Trenitalia (or -1)
+function getItLastPassed(stops){
+  if(!S.itData?.fermate)return -1;
+  let last=-1;
+  S.itData.fermate.forEach(fm=>{
+    if(fm.actualFermataType&&fm.actualFermataType>=1){
+      const idx=stops.findIndex(s=>matchStop(s,fm));
+      if(idx>last)last=idx;
+    }
+  });
+  return last;
+}
+
+// ═══════════════════════════════════════
 // POSITION
 // ═══════════════════════════════════════
 function getPos(stops,delay){
@@ -844,18 +880,36 @@ function getPos(stops,delay){
   const fd=toM(stops[0].dep);
   if(!isDateToday(S.selectedDate)||adj<fd)
     return{lat:stops[0].lat,lng:stops[0].lng,sF:0,sT:0,p:0,ph:'waiting',si:0};
+
+  // Use Trenitalia real stop data to determine sF when available
+  const itLast=getItLastPassed(stops);
+
   for(let i=0;i<stops.length-1;i++){
     const a=stops[i],b=stops[i+1];
     const d0=toM(a.dep||a.arr),d1=toM(b.arr||b.dep);
     if(!d0||!d1)continue;
     if(adj>=d0&&adj<=d1){
-      const p=Math.min(1,Math.max(0,(adj-d0)/(d1-d0)));
-      const segPts=buildSegPts(a,b);
+      // Use itLast as sF if it's further ahead (Trenitalia says train passed more stops)
+      const sF=Math.max(i,itLast<stops.length-1?itLast:i);
+      const sT=Math.min(sF+1,stops.length-1);
+      const p=sF===i?Math.min(1,Math.max(0,(adj-d0)/(d1-d0))):0;
+      const segPts=buildSegPts(stops[sF],stops[sT]);
       const{lat,lng}=lerpPolyline(segPts,p);
-      return{lat,lng,sF:i,sT:i+1,p,ph:'transit',fn:a.name,tn:b.name,inFR:a.co==='FR'||b.co==='FR',segPts};
+      return{lat,lng,sF,sT,p,ph:'transit',fn:stops[sF].name,tn:stops[sT].name,inFR:stops[sF].co==='FR'||stops[sT].co==='FR',segPts};
     }
     const nd=toM(b.dep);
-    if(nd&&adj>d1&&adj<nd) return{lat:b.lat,lng:b.lng,sF:i+1,sT:i+1,p:1,ph:'station',si:i+1};
+    if(nd&&adj>d1&&adj<nd){
+      const si=Math.max(i+1,itLast>=0?itLast:i+1);
+      return{lat:stops[si].lat,lng:stops[si].lng,sF:si,sT:si,p:1,ph:'station',si};
+    }
+  }
+  // After last scheduled time
+  if(itLast>=0&&itLast<stops.length-1){
+    // Trenitalia says train is still travelling
+    const sF=itLast,sT=itLast+1;
+    const segPts=buildSegPts(stops[sF],stops[sT]);
+    const{lat,lng}=lerpPolyline(segPts,0.5);
+    return{lat,lng,sF,sT,p:0.5,ph:'transit',fn:stops[sF].name,tn:stops[sT].name,inFR:false,segPts};
   }
   const last=stops[stops.length-1];
   return{lat:last.lat,lng:last.lng,sF:stops.length-1,sT:stops.length-1,p:1,ph:'arrived'};
@@ -925,35 +979,57 @@ async function fetchFR(num){
 // RENDER MAP
 // ═══════════════════════════════════════
 function renderMap(stops,pos){
+  const passedArr=getPassedStops(stops,pos);
+  // Route polylines
   rl.setLatLngs(buildRoutePts(stops,0,stops.length-1));
   if(['transit','station','arrived'].includes(pos.ph)){
-    const traveled=buildRoutePts(stops,0,pos.sF);
-    if(pos.ph==='transit') traveled.push([pos.lat,pos.lng]);
+    // Find last passed index from passedArr for the green line
+    const lastPassed=passedArr.lastIndexOf(true);
+    const traveled=lastPassed>=0?buildRoutePts(stops,0,Math.min(lastPassed,stops.length-1)):[];
+    if(pos.ph==='transit'){
+      const segPts=buildSegPts(stops[pos.sF],stops[pos.sT]);
+      partialPoly(segPts,pos.p).slice(1).forEach(p=>traveled.push(p));
+    }
     pl.setLatLngs(traveled);
   } else { pl.setLatLngs([]); }
-  smarks.forEach(m=>map.removeLayer(m)); smarks=[];
-  if(bmark){map.removeLayer(bmark);bmark=null;}
+
+  // Marker reuse: create on first draw, update style on subsequent draws
+  if(smarks.length!==stops.length){
+    smarks.forEach(m=>map.removeLayer(m)); smarks=[];
+    if(bmark){map.removeLayer(bmark);bmark=null;}
+    stops.forEach((s,i)=>{
+      const isE=s.isO||s.isD;
+      const m=L.circleMarker([s.lat,s.lng],{
+        radius:isE?8:5,fillColor:'#1e2840',color:'#2d3d6a',weight:2,fillOpacity:1
+      }).addTo(map);
+      const t=s.arr?`▸ ${s.arr}`:(s.dep?`◂ ${s.dep}`:'');
+      m.bindTooltip(`<b>${s.name}</b>${t?'<br>'+t:''}${s.approx?' <em>(appross.)</em>':''}`,{direction:'top'});
+      smarks.push(m);
+      if(s.border){
+        bmark=L.marker([s.lat,s.lng],{icon:L.divIcon({html:'<div class="bl-icon">🇫🇷/🇮🇹</div>',className:'',iconAnchor:[30,22]}),zIndexOffset:500}).addTo(map);
+      }
+    });
+  }
+  // Update marker colors
   stops.forEach((s,i)=>{
-    const done=pos.ph!=='waiting'&&i<=pos.sF;
-    const isE=s.isO||s.isD;
-    const m=L.circleMarker([s.lat,s.lng],{
-      radius:isE?8:5,
-      fillColor:done?'#27c087':(isE?'#e63946':'#1e2840'),
-      color:done?'#27c087':(isE?'#e63946':'#2d3d6a'),
-      weight:2,fillOpacity:1
-    }).addTo(map);
-    const t=s.arr?`▸ ${s.arr}`:(s.dep?`◂ ${s.dep}`:'');
-    m.bindTooltip(`<b>${s.name}</b>${t?'<br>'+t:''}${s.approx?' <em>(appross.)</em>':''}`,{direction:'top'});
-    smarks.push(m);
-    if(s.border){
-      bmark=L.marker([s.lat,s.lng],{icon:L.divIcon({html:'<div class="bl-icon">🇫🇷/🇮🇹</div>',className:'',iconAnchor:[30,22]}),zIndexOffset:500}).addTo(map);
-    }
+    const done=passedArr[i]; const isE=s.isO||s.isD;
+    const fc=done?'#27c087':(isE?'#e63946':'#1e2840');
+    const sc=done?'#27c087':(isE?'#e63946':'#2d3d6a');
+    if(smarks[i]) smarks[i].setStyle({fillColor:fc,color:sc});
   });
+
+  // Train marker with countdown
+  const minsToNext=pos.ph==='transit'?Math.max(0,toM(stops[pos.sT].arr||stops[pos.sT].dep)+(S.delay||0)-nowM()):null;
+  const badge=minsToNext!==null?`<div style="position:absolute;top:26px;left:50%;transform:translateX(-50%);background:rgba(9,11,15,.85);color:#cdd5e8;font-size:9px;font-family:monospace;white-space:nowrap;padding:1px 5px;border-radius:3px;border:1px solid #1d2336">${minsToNext} min</div>`:'';
+  const iconHtml=`<div style="position:relative;width:26px;height:26px"><div style="font-size:22px;filter:drop-shadow(0 0 9px rgba(230,57,70,.95))">🚄</div>${badge}</div>`;
   if(!trainM) trainM=L.marker([pos.lat,pos.lng],{
-    icon:L.divIcon({html:`<div style="font-size:22px;filter:drop-shadow(0 0 9px rgba(230,57,70,.95))">🚄</div>`,className:'',iconSize:[26,26],iconAnchor:[13,13]}),
+    icon:L.divIcon({html:iconHtml,className:'',iconSize:[26,26],iconAnchor:[13,13]}),
     zIndexOffset:1000
   }).addTo(map);
-  else trainM.setLatLng([pos.lat,pos.lng]);
+  else{
+    trainM.setLatLng([pos.lat,pos.lng]);
+    if(minsToNext!==null) trainM.setIcon(L.divIcon({html:iconHtml,className:'',iconSize:[26,26],iconAnchor:[13,13]}));
+  }
   S.lastPos=pos;
 }
 
@@ -962,17 +1038,30 @@ function renderMap(stops,pos){
 // ═══════════════════════════════════════
 function buildStops(stops,pos,targetEl){
   targetEl.innerHTML='';
+  const passedArr=getPassedStops(stops,pos);
   stops.forEach((s,i)=>{
-    const passed=pos.ph!=='waiting'&&i<pos.sF;
+    const passed=passedArr[i];
     const isCur=(pos.ph==='station'&&pos.si===i)||(pos.ph==='arrived'&&i===stops.length-1);
+    const isNext=pos.ph==='transit'&&i===pos.sT;
     const row=document.createElement('div'); row.className='srow';
-    const dc=isCur?'dc now':(passed?'dc done':(s.isD?'dc end':'dc'));
-    const nc=isCur?'sn now':(passed?'sn done':'sn');
+    const dc=isCur?'dc now':(passed?'dc done':(isNext?'dc next':(s.isD?'dc end':'dc')));
+    const nc=isCur?'sn now':(passed?'sn done':(isNext?'sn next':'sn'));
     let ts=''; if(s.arr)ts+=`arr ${s.arr}`; if(s.dep&&s.dep!==s.arr)ts+=(ts?' · ':'')+'dep '+s.dep;
     const tag=s.border?'<span class="tag bo">confine</span>':s.co==='FR'?'<span class="tag fr">FR</span>':'<span class="tag it">IT</span>';
     const del=(S.delay&&!passed&&S.src!=='schedule')?`<span class="sdel ${S.delay>0?'pos':'neg'}">${S.delay>0?'+':''}${S.delay}'</span>`:'';
-    const note=(!passed&&s.approx)?'<div class="snote">⚠ orario approssimativo</div>':'';
-    row.innerHTML=`<div class="spine"><div class="${dc}"></div>${i<stops.length-1?`<div class="lc${passed?' done':''}" style="height:46px"></div>`:''}</div><div class="si"><div class="${nc}">${s.name}</div><div class="sm"><span class="stm">${ts}</span>${tag}${del}</div>${note}</div>`;
+    let extra='';
+    if(S.itData?.fermate){
+      const fm=S.itData.fermate.find(f=>matchStop(s,f));
+      if(fm){
+        const bin=fm.binarioEffettivoPartenzaDescrizione||fm.binarioProgrammatoPartenzaDescrizione;
+        if(bin) extra+=`<span class="sbin">Bin. ${bin}</span>`;
+        if(fm.partenzaReale){
+          const pr=new Date(fm.partenzaReale);
+          extra+=`<span class="sdep-r">↗ ${pr.getHours().toString().padStart(2,'0')}:${pr.getMinutes().toString().padStart(2,'0')}</span>`;
+        }
+      }
+    }
+    row.innerHTML=`<div class="spine"><div class="${dc}"></div>${i<stops.length-1?`<div class="lc${passed?' done':''}" style="height:46px"></div>`:''}</div><div class="si"><div class="${nc}">${s.name}</div><div class="sm"><span class="stm">${ts}</span>${tag}${del}${extra}</div></div>`;
     targetEl.appendChild(row);
   });
 }
@@ -988,7 +1077,6 @@ function renderSB(stops,pos){
   const last=stops[stops.length-1];
   document.getElementById('st-e').textContent=fmtM(toM(last.arr||last.dep)+S.delay);
   document.getElementById('st-p').textContent={waiting:'Attesa',transit:'In viaggio',station:'In fermata',arrived:'Arrivato'}[pos.ph]||'—';
-  document.getElementById('fr-box').style.display=stops.some(s=>s.co==='FR')?'block':'none';
   buildStops(stops,pos,document.getElementById('slist'));
 }
 
@@ -1002,7 +1090,6 @@ function renderBS(stops,pos){
   const last=stops[stops.length-1];
   document.getElementById('bs-eta').textContent=fmtM(toM(last.arr||last.dep)+S.delay);
   document.getElementById('bs-phase').textContent={waiting:'Attesa',transit:'In viaggio',station:'Fermata',arrived:'Arrivato'}[pos.ph]||'—';
-  document.getElementById('bs-fr-box').style.display=stops.some(s=>s.co==='FR')?'block':'none';
   buildStops(stops,pos,document.getElementById('bs-list'));
 }
 
@@ -1010,7 +1097,7 @@ function renderBS(stops,pos){
 // RENDER OVERLAYS
 // ═══════════════════════════════════════
 function renderOV(stops,pos){
-  ['pp','sp','cbtn'].forEach(id=>document.getElementById(id).style.display='block');
+  ['pp','cbtn'].forEach(id=>document.getElementById(id).style.display='block');
   const ov=document.getElementById('sov');
   if(pos.ph==='waiting'||pos.ph==='arrived'){
     ov.style.display='flex';
@@ -1027,20 +1114,35 @@ function renderOV(stops,pos){
   else if(pos.ph==='station'){pm.textContent=stops[pos.si].name;ps.textContent='In fermata';}
   else if(pos.ph==='arrived'){pm.textContent=stops[stops.length-1].name;ps.textContent='✓ Arrivato';}
   else{
-    ps.textContent=`→ ${pos.tn}${pos.inFR?' · 🇫🇷 interpolato':''}`;
-    pm.textContent=S.locationName||pos.fn;
-    reverseGeocode(pos.lat,pos.lng).then(name=>{
-      if(name){S.locationName=name;document.getElementById('ppm').textContent=name;}
+    const minsToNext=Math.max(0,toM(stops[pos.sT].arr||stops[pos.sT].dep)+(S.delay||0)-nowM());
+    const statusTxt=minsToNext<=5?`In arrivo a ${stops[pos.sT].name}`:`Tra ${stops[pos.sF].name.split(' ')[0]} e ${stops[pos.sT].name.split(' ')[0]}`;
+    ps.textContent=`${statusTxt} · ${minsToNext} min`;
+    pm.textContent=S.locationName||stops[pos.sF].name;
+    scheduleGeocode(pos.lat,pos.lng,name=>{
+      S.locationName=name;
+      const el=document.getElementById('ppm'); if(el)el.textContent=name;
     });
-  }  // Live badge — update all instances
+  }
+
+  // Live badge — only show when there's real data, hide for schedule-only
   const now=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const hasLive=S.src==='live-it'||S.src==='live-fr';
   const dotClass=S.src==='live-it'?'dot live':S.src==='live-fr'?'dot est':'dot';
-  const lblTxt=S.src==='live-it'?`live IT · ${now}`:S.src==='live-fr'?`SNCF · ${now}`:`orario · ${now}`;
+  const lblTxt=S.src==='live-it'?`live IT · ${now}`:S.src==='live-fr'?`SNCF · ${now}`:'';
   ['ldot','ldot-desk'].forEach(id=>{ const el=document.getElementById(id); if(el)el.className=dotClass; });
   ['live-lbl','live-lbl-desk'].forEach(id=>{ const el=document.getElementById(id); if(el)el.textContent=lblTxt; });
-
-  const srcMap={'schedule':'🟡 Da orario','live-it':'🟢 Live Trenitalia (IT)','live-fr':'🟠 SNCF GTFS-RT (FR)'};
-  document.getElementById('spt-txt').textContent=(srcMap[S.src]||'🟡 Da orario')+` · ${now}`;
+  // Show/hide the badge containers based on live data availability
+  const hdrBadge=document.getElementById('hdr-badge');
+  const barRight=document.getElementById('bar-right');
+  if(hdrBadge) hdrBadge.style.visibility=hasLive?'visible':'hidden';
+  // keep bar-right visible (it has theme toggle), just hide the text
+  if(!hasLive&&barRight){
+    document.getElementById('ldot-desk').style.display='none';
+    document.getElementById('live-lbl-desk').style.display='none';
+  } else if(barRight){
+    document.getElementById('ldot-desk').style.display='';
+    document.getElementById('live-lbl-desk').style.display='';
+  }
 }
 
 // ═══════════════════════════════════════
@@ -1051,15 +1153,26 @@ async function refresh(){
   document.getElementById('hdr-refresh').textContent='↻';
   if(isDateToday(S.selectedDate)){
     const it=await fetchIT(S.num);
-    if(it&&typeof it.ritardo==='number'){S.delay=it.ritardo;S.src='live-it';}
+    if(it&&typeof it.ritardo==='number'){S.delay=it.ritardo;S.src='live-it';S.itData=it;}
     else{
+      S.itData=null;
       const fr=await fetchFR(S.num);
       if(fr!==null){S.delay=fr;S.src='live-fr';}
       else{S.delay=0;S.src='schedule';}
     }
-  } else {S.delay=0;S.src='schedule';}
+  } else {S.delay=0;S.src='schedule';S.itData=null;}
   draw();
   document.getElementById('btn-refresh').textContent='↻ Aggiorna';
+}
+
+function drawPos(){
+  if(!S.lastPos) return;
+  const stops=S.sch.stops, pos=getPos(stops,S.delay);
+  renderMap(stops,pos);
+  renderSB(stops,pos);
+  renderBS(stops,pos);
+  renderOV(stops,pos);
+  S.lastPos=pos;
 }
 
 function draw(){
@@ -1077,14 +1190,18 @@ function selectTrain(num){
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('active',b.textContent.includes('FR '+num)));
   document.getElementById('ntm').style.display='none';
   const sch=SCH[num]; if(!sch){alert(`Treno ${num} non trovato.`);return;}
-  S.num=num; S.sch=sch; S.delay=0; S.src='schedule'; S.locationName=null;
+  S.num=num; S.sch=sch; S.delay=0; S.src='schedule'; S.locationName=null; S.itData=null;
   pl.setLatLngs([]);
+  smarks.forEach(m=>map.removeLayer(m)); smarks=[];
   smarks.forEach(m=>map.removeLayer(m)); smarks=[];
   if(trainM){map.removeLayer(trainM);trainM=null;}
   if(bmark){map.removeLayer(bmark);bmark=null;}
   map.fitBounds(sch.stops.map(s=>[s.lat,s.lng]),{padding:[30,30]});
-  clearInterval(S.timer); refresh();
-  if(isDateToday(S.selectedDate)) S.timer=setInterval(refresh,30000);
+  clearInterval(S.timer); clearInterval(S.posTimer); refresh();
+  if(isDateToday(S.selectedDate)){
+    S.timer=setInterval(refresh,30000);
+    S.posTimer=setInterval(drawPos,10000);
+  }
 }
 
 function goCustom(){
