@@ -84,6 +84,7 @@ body{ font-family:var(--sans); background:var(--bg); color:var(--text); display:
 }
 .tbtn:active, .tbtn:hover{ border-color:var(--blue); color:var(--text); }
 .tbtn.active{ background:var(--red); border-color:var(--red); color:#fff; }
+.tbtn.tbtn-tgv.active{ background:var(--blue); border-color:var(--blue); color:#fff; }
 .tbtn .td{ font-size:9px; opacity:.75; display:block; }
 .tbtn .tn{ font-size:14px; display:block; font-weight:600; }
 .tbtn .tt{ font-size:10px; display:block; }
@@ -407,6 +408,26 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
     <span class="td">🇮🇹→🇫🇷</span><span class="tn">FR 9296</span><span class="tt">15:53→22:34</span>
   </div>
   <div class="vsep"></div>
+  <div class="tbtn tbtn-tgv" onclick="selectTrain('9240')">
+    <span class="td">🇮🇹→🇫🇷 TGV</span><span class="tn">TGV 9240</span><span class="tt">06:00→13:30</span>
+  </div>
+  <div class="tbtn tbtn-tgv" onclick="selectTrain('9244')">
+    <span class="td">🇮🇹→🇫🇷 TGV</span><span class="tn">TGV 9244</span><span class="tt">12:10→19:15</span>
+  </div>
+  <div class="tbtn tbtn-tgv" onclick="selectTrain('9248')">
+    <span class="td">🇮🇹→🇫🇷 TGV</span><span class="tn">TGV 9248</span><span class="tt">16:10→23:15</span>
+  </div>
+  <div class="vsep"></div>
+  <div class="tbtn tbtn-tgv" onclick="selectTrain('9241')">
+    <span class="td">🇫🇷→🇮🇹 TGV</span><span class="tn">TGV 9241</span><span class="tt">06:46→13:50</span>
+  </div>
+  <div class="tbtn tbtn-tgv" onclick="selectTrain('9245')">
+    <span class="td">🇫🇷→🇮🇹 TGV</span><span class="tn">TGV 9245</span><span class="tt">09:46→16:50</span>
+  </div>
+  <div class="tbtn tbtn-tgv" onclick="selectTrain('9249')">
+    <span class="td">🇫🇷→🇮🇹 TGV</span><span class="tn">TGV 9249</span><span class="tt">14:48→21:50</span>
+  </div>
+  <div class="vsep"></div>
   <input class="cinp" id="cin" type="text" placeholder="Num." maxlength="6"
          onkeydown="if(event.key==='Enter')goCustom()" inputmode="numeric"/>
   <button class="cgo" onclick="goCustom()">↗</button>
@@ -530,6 +551,21 @@ const ROUTE_WPT = {
   'to->mi': [
     [45.09,7.74],[45.19,7.89],[45.32,8.42],
     [45.45,8.63],[45.53,9.04]
+  ],
+  // Milano Porta Garibaldi (slightly NW of Centrale, same HSL)
+  'to->migb': [
+    [45.09,7.74],[45.19,7.89],[45.32,8.42],
+    [45.45,8.63],[45.50,9.07],[45.49,9.19]
+  ],
+  // Chambéry → Mâcon-Loché TGV (TGV route: north via Culoz + LGV Sud-Est, bypasses Lyon city)
+  'cham->macon': [
+    [45.70,5.88],[45.84,5.77],[45.95,5.36],
+    [46.20,5.23],[46.30,4.83]
+  ],
+  // Mâcon-Loché → Paris (LGV Sud-Est, same line as paris->lyon)
+  'macon->paris': [
+    [46.68,4.89],[47.11,4.85],[47.42,4.14],
+    [47.83,3.52],[48.11,3.11],[48.39,2.80],[48.64,2.58]
   ]
 };
 
@@ -576,6 +612,68 @@ const SCH = {
     {id:'cham', name:'Chambéry',             lat:45.5646,lng:5.9178, arr:'19:22',dep:'19:22',co:'FR',approx:true},
     {id:'lyon', name:'Lyon Part-Dieu',       lat:45.7601,lng:4.8296, arr:'20:52',dep:'20:52',co:'FR',approx:true},
     {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735, arr:'22:34',co:'FR',isD:true}
+  ]},
+  // ── TGV Inoui (SNCF) ─ Milano Porta Garibaldi ↔ Paris Gare de Lyon ──────
+  // 'migb' = Milano Porta Garibaldi, 'macon' = Mâcon-Loché TGV
+  '9240':{label:'TGV 9240',type:'tgv',stops:[
+    {id:'migb',name:'Milano Porta Garibaldi',lat:45.4848,lng:9.1879,dep:'06:00',co:'IT',isO:true},
+    {id:'to',  name:'Torino Porta Susa',     lat:45.0706,lng:7.6676,arr:'07:33',dep:'07:36',co:'IT'},
+    {id:'oulx',name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308,arr:'08:34',dep:'08:36',co:'IT'},
+    {id:'mod', name:'Modane',                lat:45.1944,lng:6.6594,arr:'09:08',dep:'09:08',co:'IT',border:true,approx:true},
+    {id:'sj',  name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485,arr:'09:35',dep:'09:35',co:'FR',approx:true},
+    {id:'cham',name:'Chambéry',              lat:45.5646,lng:5.9178,arr:'10:10',dep:'10:10',co:'FR',approx:true},
+    {id:'macon',name:'Mâcon-Loché TGV',      lat:46.3013,lng:4.7803,arr:'11:45',dep:'11:45',co:'FR',approx:true},
+    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735,arr:'13:30',co:'FR',isD:true}
+  ]},
+  '9244':{label:'TGV 9244',type:'tgv',stops:[
+    {id:'migb',name:'Milano Porta Garibaldi',lat:45.4848,lng:9.1879,dep:'12:10',co:'IT',isO:true},
+    {id:'to',  name:'Torino Porta Susa',     lat:45.0706,lng:7.6676,arr:'13:39',dep:'13:41',co:'IT'},
+    {id:'oulx',name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308,arr:'14:34',dep:'14:36',co:'IT'},
+    {id:'mod', name:'Modane',                lat:45.1944,lng:6.6594,arr:'15:08',dep:'15:08',co:'IT',border:true,approx:true},
+    {id:'sj',  name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485,arr:'15:35',dep:'15:35',co:'FR',approx:true},
+    {id:'cham',name:'Chambéry',              lat:45.5646,lng:5.9178,arr:'16:10',dep:'16:10',co:'FR',approx:true},
+    {id:'macon',name:'Mâcon-Loché TGV',      lat:46.3013,lng:4.7803,arr:'17:45',dep:'17:45',co:'FR',approx:true},
+    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735,arr:'19:15',co:'FR',isD:true}
+  ]},
+  '9248':{label:'TGV 9248',type:'tgv',stops:[
+    {id:'migb',name:'Milano Porta Garibaldi',lat:45.4848,lng:9.1879,dep:'16:10',co:'IT',isO:true},
+    {id:'to',  name:'Torino Porta Susa',     lat:45.0706,lng:7.6676,arr:'17:36',dep:'17:38',co:'IT'},
+    {id:'oulx',name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308,arr:'18:34',dep:'18:36',co:'IT'},
+    {id:'mod', name:'Modane',                lat:45.1944,lng:6.6594,arr:'19:08',dep:'19:08',co:'IT',border:true,approx:true},
+    {id:'sj',  name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485,arr:'19:35',dep:'19:35',co:'FR',approx:true},
+    {id:'cham',name:'Chambéry',              lat:45.5646,lng:5.9178,arr:'20:10',dep:'20:10',co:'FR',approx:true},
+    {id:'macon',name:'Mâcon-Loché TGV',      lat:46.3013,lng:4.7803,arr:'21:45',dep:'21:45',co:'FR',approx:true},
+    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735,arr:'23:15',co:'FR',isD:true}
+  ]},
+  '9241':{label:'TGV 9241',type:'tgv',stops:[
+    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735,dep:'06:46',co:'FR',isO:true},
+    {id:'macon',name:'Mâcon-Loché TGV',      lat:46.3013,lng:4.7803,arr:'08:30',dep:'08:30',co:'FR',approx:true},
+    {id:'cham',name:'Chambéry',              lat:45.5646,lng:5.9178,arr:'10:00',dep:'10:00',co:'FR',approx:true},
+    {id:'sj',  name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485,arr:'10:35',dep:'10:35',co:'FR',approx:true},
+    {id:'mod', name:'Modane',                lat:45.1944,lng:6.6594,arr:'11:00',dep:'11:00',co:'IT',border:true,approx:true},
+    {id:'oulx',name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308,arr:'11:23',dep:'11:25',co:'IT'},
+    {id:'to',  name:'Torino Porta Susa',     lat:45.0706,lng:7.6676,arr:'12:23',dep:'12:25',co:'IT'},
+    {id:'migb',name:'Milano Porta Garibaldi',lat:45.4848,lng:9.1879,arr:'13:50',co:'IT',isD:true}
+  ]},
+  '9245':{label:'TGV 9245',type:'tgv',stops:[
+    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735,dep:'09:46',co:'FR',isO:true},
+    {id:'macon',name:'Mâcon-Loché TGV',      lat:46.3013,lng:4.7803,arr:'11:30',dep:'11:30',co:'FR',approx:true},
+    {id:'cham',name:'Chambéry',              lat:45.5646,lng:5.9178,arr:'13:00',dep:'13:00',co:'FR',approx:true},
+    {id:'sj',  name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485,arr:'13:35',dep:'13:35',co:'FR',approx:true},
+    {id:'mod', name:'Modane',                lat:45.1944,lng:6.6594,arr:'14:00',dep:'14:00',co:'IT',border:true,approx:true},
+    {id:'oulx',name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308,arr:'15:23',dep:'15:25',co:'IT'},
+    {id:'to',  name:'Torino Porta Susa',     lat:45.0706,lng:7.6676,arr:'15:24',dep:'15:26',co:'IT'},
+    {id:'migb',name:'Milano Porta Garibaldi',lat:45.4848,lng:9.1879,arr:'16:50',co:'IT',isD:true}
+  ]},
+  '9249':{label:'TGV 9249',type:'tgv',stops:[
+    {id:'paris',name:'Paris Gare de Lyon',   lat:48.8448,lng:2.3735,dep:'14:48',co:'FR',isO:true},
+    {id:'macon',name:'Mâcon-Loché TGV',      lat:46.3013,lng:4.7803,arr:'16:30',dep:'16:30',co:'FR',approx:true},
+    {id:'cham',name:'Chambéry',              lat:45.5646,lng:5.9178,arr:'18:00',dep:'18:00',co:'FR',approx:true},
+    {id:'sj',  name:'St-Jean-de-Maurienne',  lat:45.2745,lng:6.3485,arr:'18:35',dep:'18:35',co:'FR',approx:true},
+    {id:'mod', name:'Modane',                lat:45.1944,lng:6.6594,arr:'19:00',dep:'19:00',co:'IT',border:true,approx:true},
+    {id:'oulx',name:'Oulx Cesana Claviere',  lat:44.9133,lng:6.8308,arr:'20:23',dep:'20:25',co:'IT'},
+    {id:'to',  name:'Torino Porta Susa',     lat:45.0706,lng:7.6676,arr:'20:24',dep:'20:26',co:'IT'},
+    {id:'migb',name:'Milano Porta Garibaldi',lat:45.4848,lng:9.1879,arr:'21:50',co:'IT',isD:true}
   ]}
 };
 
@@ -1187,7 +1285,7 @@ function draw(){
 // CONTROLS
 // ═══════════════════════════════════════
 function selectTrain(num){
-  document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('active',b.textContent.includes('FR '+num)));
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('active',b.textContent.replace(/\s+/g,'').includes(num)));
   document.getElementById('ntm').style.display='none';
   const sch=SCH[num]; if(!sch){alert(`Treno ${num} non trovato.`);return;}
   S.num=num; S.sch=sch; S.delay=0; S.src='schedule'; S.locationName=null; S.itData=null;
@@ -1207,7 +1305,7 @@ function selectTrain(num){
 function goCustom(){
   const v=document.getElementById('cin').value.trim(); if(!v)return;
   if(SCH[v]){selectTrain(v);return;}
-  alert(`Treno ${v} non è nei 4 Frecciarossa Paris↔Milano.\n\nPer altri treni: treniamo.it`);
+  alert(`Treno ${v} non trovato.\n\nFrecciarossa: 9281, 9287, 9292, 9296\nTGV Inoui: 9240, 9241, 9244, 9245, 9248, 9249\n\nPer altri treni: treniamo.it`);
 }
 
 function centerTrain(){
