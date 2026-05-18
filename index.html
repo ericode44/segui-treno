@@ -30,10 +30,6 @@ body.light{
 *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 html,body{ height:100%; overflow:hidden; }
 body{ background:var(--bg); color:var(--text); font-family:var(--sans); display:flex; flex-direction:column; }
-#lod{ position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; gap:16px; transition:opacity .4s; }
-#lod.hidden{ opacity:0; pointer-events:none; }
-.spn{ width:32px; height:32px; border:2px solid var(--border); border-top-color:var(--red); border-radius:50%; animation:spin .8s linear infinite; }
-.spt{ font-family:var(--mono); font-size:12px; color:var(--muted); }
 
 /* ══════════════════════════════════
    HEADER ROW (logo + date + controls)
@@ -404,7 +400,7 @@ body.light .leaflet-control-zoom a:hover{ background:var(--surface2); }
     <span class="td">🇫🇷→🇮🇹</span><span class="tn">FR 9281</span><span class="tt">07:30→14:07</span>
   </div>
   <div class="tbtn active" onclick="selectTrain('9287')">
-    <span class="td">🇫🇷→🇮🇹</span><span class="tn">FR 9287</span><span class="tt">15:19→22:07</span>
+    <span class="td">🇫🇷→🇮🇹</span><span class="tn">FR 9287</span><span class="tt">15:20→22:07</span>
   </div>
   <div class="vsep"></div>
   <div class="tbtn" onclick="selectTrain('9292')">
@@ -553,7 +549,7 @@ const SCH = {
     {id:'mi',   name:'Milano Centrale',      lat:45.4862,lng:9.2046, arr:'14:07',co:'IT',isD:true}
   ]},
   '9287':{label:'FR 9287',stops:[
-    {id:'paris',name:'Paris Gare de Lyon',  lat:48.8448,lng:2.3735, dep:'15:19',co:'FR',isO:true},
+    {id:'paris',name:'Paris Gare de Lyon',  lat:48.8448,lng:2.3735, dep:'15:20',co:'FR',isO:true},
     {id:'lyon', name:'Lyon Part-Dieu',       lat:45.7601,lng:4.8296, arr:'17:21',dep:'17:21',co:'FR',approx:true},
     {id:'cham', name:'Chambéry',             lat:45.5646,lng:5.9178, arr:'18:47',dep:'18:47',co:'FR',approx:true},
     {id:'sj',   name:'St-Jean-de-Maurienne', lat:45.2745,lng:6.3485, arr:'19:33',dep:'19:33',co:'FR',approx:true},
@@ -1204,8 +1200,8 @@ function renderOV(stops,pos){
 // REFRESH
 // ═══════════════════════════════════════
 async function refresh(){
-  document.getElementById('btn-refresh').textContent='↻ ...';
-  document.getElementById('hdr-refresh').textContent='↻';
+  const btnR=document.getElementById('btn-refresh');
+  if(btnR) btnR.textContent='↻ ...';
   if(isDateToday(S.selectedDate)){
     const it=await fetchIT(S.num);
     if(it&&typeof it.ritardo==='number'){S.delay=it.ritardo;S.src='live-it';S.itData=it;}
@@ -1217,7 +1213,7 @@ async function refresh(){
     }
   } else {S.delay=0;S.src='schedule';S.itData=null;}
   draw();
-  document.getElementById('btn-refresh').textContent='↻ Aggiorna';
+  if(btnR) btnR.textContent='↻ Aggiorna';
 }
 
 function drawPos(){
@@ -1247,7 +1243,6 @@ function selectTrain(num){
   const sch=SCH[num]; if(!sch){alert(`Treno ${num} non trovato.`);return;}
   S.num=num; S.sch=sch; S.delay=0; S.src='schedule'; S.locationName=null; S.itData=null;
   pl.setLatLngs([]);
-  smarks.forEach(m=>map.removeLayer(m)); smarks=[];
   smarks.forEach(m=>map.removeLayer(m)); smarks=[];
   if(trainM){map.removeLayer(trainM);trainM=null;}
   if(bmark){map.removeLayer(bmark);bmark=null;}
