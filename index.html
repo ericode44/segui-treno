@@ -662,6 +662,7 @@ map.whenReady(()=>document.getElementById('lod').classList.add('hidden'));
 let rl=L.polyline([],{color:'#1a2240',weight:3,dashArray:'5,7'}).addTo(map);
 let pl=L.polyline([],{color:'#27c087',weight:4}).addTo(map);
 let trainM=null, smarks=[], bmark=null;
+let _routeCache=null; // {num, pts} — full route never changes per train
 
 // ═══════════════════════════════════════
 // THEME
@@ -998,22 +999,39 @@ function getPos(stops,delay){
 }
 
 // ═══════════════════════════════════════
+// NETWORK HELPERS
+// ═══════════════════════════════════════
+// Race two CORS proxies in parallel — use whichever responds first
+async function fetchProxy(url){
+  const p1=`https://corsproxy.io/?${encodeURIComponent(url)}`;
+  const p2=`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  try{
+    return await Promise.any([
+      fetch(p1).then(r=>{ if(!r.ok)throw 0; return r; }),
+      fetch(p2).then(r=>{ if(!r.ok)throw 0; return r; })
+    ]);
+  }catch{ return null; }
+}
+
+// ═══════════════════════════════════════
 // TRENITALIA API
 // ═══════════════════════════════════════
+const _originCache={};  // cache codOrigine per treno — stabile durante la giornata
 async function fetchIT(num){
-  const px=[u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`];
-  for(const p of px){
-    try{
-      const r1=await fetch(p(`https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/cercaNumeroTrenoTrenitalia/${num}`));
-      if(!r1.ok)continue;
-      const d1=await r1.json(); if(!d1?.length)continue;
-      const{codOrigine:co,numeroTreno:nt}=d1[0];
-      const r2=await fetch(p(`https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/andamentoTreno/${co}/${nt}/${Date.now()}`));
-      if(!r2.ok)continue;
-      return await r2.json();
-    }catch{}
-  }
-  return null;
+  try{
+    // Step 1: get origin code (cached after first call)
+    if(!_originCache[num]){
+      const r1=await fetchProxy(`https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/cercaNumeroTrenoTrenitalia/${num}`);
+      if(!r1)return null;
+      const d1=await r1.json(); if(!d1?.length)return null;
+      _originCache[num]={co:d1[0].codOrigine,nt:d1[0].numeroTreno};
+    }
+    const{co,nt}=_originCache[num];
+    // Step 2: get live train status
+    const r2=await fetchProxy(`https://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno/andamentoTreno/${co}/${nt}/${Date.now()}`);
+    if(!r2)return null;
+    return await r2.json();
+  }catch{ return null; }
 }
 
 // ═══════════════════════════════════════
@@ -1029,32 +1047,39 @@ message StopTimeUpdate{optional uint32 stop_sequence=1;optional string stop_id=3
 message StopTimeEvent{optional int64 time=1;optional int32 delay=2;}`;
 let protoRoot=null;
 async function getProto(){ if(protoRoot)return protoRoot; try{protoRoot=await protobuf.parse(PROTO,{keepCase:true}).root;return protoRoot;}catch{return null;} }
+
+// Cache the SNCF feed for 25s — it's ~1MB, no need to re-download every refresh
+let _sncfCache=null; // {buf:ArrayBuffer, ts:number}
+async function getSncfFeed(){
+  const now=Date.now();
+  if(_sncfCache&&now-_sncfCache.ts<25000) return _sncfCache.buf;
+  const url='https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates';
+  const r=await fetchProxy(url);
+  if(!r)return null;
+  const buf=await r.arrayBuffer();
+  _sncfCache={buf,ts:Date.now()};
+  return buf;
+}
+
 async function fetchFR(num){
   try{
     const root=await getProto(); if(!root)return null;
     const FM=root.lookupType('tr.FeedMessage');
-    const url='https://proxy.transport.data.gouv.fr/resource/sncf-gtfs-rt-trip-updates';
-    const px=[u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`];
-    for(const p of px){
-      try{
-        const r=await fetch(p(url)); if(!r.ok)continue;
-        const msg=FM.decode(new Uint8Array(await r.arrayBuffer()));
-        for(const e of(msg.entity||[])){
-          const tid=e.trip_update?.trip?.trip_id||'';
-          if(tid.includes(num)){
-            let maxD=0;
-            for(const su of(e.trip_update?.stop_time_update||[])){
-              const d=su.departure?.delay??su.arrival?.delay??0;
-              if(Math.abs(d)>Math.abs(maxD))maxD=d;
-            }
-            return Math.round(maxD/60);
-          }
+    const buf=await getSncfFeed(); if(!buf)return null;
+    const msg=FM.decode(new Uint8Array(buf));
+    for(const e of(msg.entity||[])){
+      const tid=e.trip_update?.trip?.trip_id||'';
+      if(tid.includes(num)){
+        let maxD=0;
+        for(const su of(e.trip_update?.stop_time_update||[])){
+          const d=su.departure?.delay??su.arrival?.delay??0;
+          if(Math.abs(d)>Math.abs(maxD))maxD=d;
         }
-        return null;
-      }catch{}
+        return Math.round(maxD/60);
+      }
     }
-  }catch{}
-  return null;
+    return null;
+  }catch{ return null; }
 }
 
 // ═══════════════════════════════════════
@@ -1062,8 +1087,11 @@ async function fetchFR(num){
 // ═══════════════════════════════════════
 function renderMap(stops,pos){
   const passedArr=getPassedStops(stops,pos);
-  // Route polylines
-  rl.setLatLngs(buildRoutePts(stops,0,stops.length-1));
+  // Full route: cached per train — never changes once selected
+  if(!_routeCache||_routeCache.num!==S.num){
+    _routeCache={num:S.num,pts:buildRoutePts(stops,0,stops.length-1)};
+    rl.setLatLngs(_routeCache.pts);
+  }
   if(['transit','station','arrived'].includes(pos.ph)){
     // Find last passed index from passedArr for the green line
     const lastPassed=passedArr.lastIndexOf(true);
@@ -1118,7 +1146,12 @@ function renderMap(stops,pos){
 // ═══════════════════════════════════════
 // BUILD STOP LIST HTML (shared)
 // ═══════════════════════════════════════
+let _lastStopKey='';
 function buildStops(stops,pos,targetEl){
+  // Only rebuild DOM if position phase, delay or source changed
+  const key=`${pos.sF}|${pos.ph}|${S.delay}|${S.src}`;
+  if(key===_lastStopKey&&targetEl.children.length>0)return;
+  _lastStopKey=key;
   targetEl.innerHTML='';
   const passedArr=getPassedStops(stops,pos);
   stops.forEach((s,i)=>{
@@ -1224,14 +1257,13 @@ async function refresh(){
   const btnR=document.getElementById('btn-refresh');
   if(btnR) btnR.textContent='↻ ...';
   if(isDateToday(S.selectedDate)){
-    const it=await fetchIT(S.num);
+    // Run both APIs in parallel — faster than sequential
+    const [itRes,frRes]=await Promise.allSettled([fetchIT(S.num),fetchFR(S.num)]);
+    const it=itRes.status==='fulfilled'?itRes.value:null;
+    const fr=frRes.status==='fulfilled'?frRes.value:null;
     if(it&&typeof it.ritardo==='number'){S.delay=it.ritardo;S.src='live-it';S.itData=it;}
-    else{
-      S.itData=null;
-      const fr=await fetchFR(S.num);
-      if(fr!==null){S.delay=fr;S.src='live-fr';}
-      else{S.delay=0;S.src='schedule';}
-    }
+    else if(fr!==null){S.delay=fr;S.src='live-fr';S.itData=null;}
+    else{S.delay=0;S.src='schedule';S.itData=null;}
   } else {S.delay=0;S.src='schedule';S.itData=null;}
   draw();
   if(btnR) btnR.textContent='↻ Aggiorna';
@@ -1263,15 +1295,16 @@ function selectTrain(num){
   document.getElementById('ntm').style.display='none';
   const sch=SCH[num]; if(!sch){alert(`Treno ${num} non trovato.`);return;}
   S.num=num; S.sch=sch; S.delay=0; S.src='schedule'; S.locationName=null; S.itData=null;
-  pl.setLatLngs([]);
+  _routeCache=null; _sncfCache=null; _lastStopKey=''; // reset caches for new train
+  pl.setLatLngs([]); rl.setLatLngs([]);
   smarks.forEach(m=>map.removeLayer(m)); smarks=[];
   if(trainM){map.removeLayer(trainM);trainM=null;}
   if(bmark){map.removeLayer(bmark);bmark=null;}
   map.fitBounds(sch.stops.map(s=>[s.lat,s.lng]),{padding:[30,30]});
   clearInterval(S.timer); clearInterval(S.posTimer); refresh();
   if(isDateToday(S.selectedDate)){
-    S.timer=setInterval(refresh,30000);
-    S.posTimer=setInterval(drawPos,10000);
+    S.timer=setInterval(refresh,20000);      // API every 20s (was 30s)
+    S.posTimer=setInterval(drawPos,5000);    // position every 5s (was 10s)
   }
 }
 
